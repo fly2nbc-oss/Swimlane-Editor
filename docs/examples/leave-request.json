@@ -3,44 +3,44 @@
   "version": 1,
   "diagrams": [
     {
-      "id": "urlaubsantrag",
-      "title": "Urlaubsantrag",
-      "owner": "Personal",
+      "id": "leave-request",
+      "title": "Leave request",
+      "owner": "HR",
       "version": "1.0",
       "status": "Draft",
-      "description": "Vom Antrag bis zur Eintragung im HR-System.",
+      "description": "From the request to the entry in the HR system.",
       "width": 1025,
       "lanes": [
         {
           "id": "l1",
-          "name": "Mitarbeiter",
+          "name": "Employee",
           "height": 140
         },
         {
           "id": "l2",
-          "name": "Teamleiter",
+          "name": "Team lead",
           "height": 140
         },
         {
           "id": "l3",
-          "name": "Personalabteilung",
+          "name": "HR department",
           "height": 140
         }
       ],
       "phases": [
         {
           "id": "p1",
-          "name": "Antrag",
+          "name": "Request",
           "width": 345
         },
         {
           "id": "p2",
-          "name": "Prüfung",
+          "name": "Review",
           "width": 340
         },
         {
           "id": "p3",
-          "name": "Abschluss",
+          "name": "Completion",
           "width": 340
         }
       ],
@@ -52,7 +52,7 @@
           "y": 52,
           "w": 36,
           "h": 36,
-          "text": "Urlaub nötig"
+          "text": "Time off needed"
         },
         {
           "id": "a",
@@ -61,7 +61,7 @@
           "y": 40,
           "w": 120,
           "h": 60,
-          "text": "Antrag stellen"
+          "text": "Submit request"
         },
         {
           "id": "b",
@@ -70,7 +70,7 @@
           "y": 180,
           "w": 120,
           "h": 60,
-          "text": "Antrag prüfen"
+          "text": "Review request"
         },
         {
           "id": "c",
@@ -79,7 +79,7 @@
           "y": 175,
           "w": 100,
           "h": 70,
-          "text": "Genehmigt?"
+          "text": "Approved?"
         },
         {
           "id": "f",
@@ -88,7 +88,7 @@
           "y": 40,
           "w": 120,
           "h": 60,
-          "text": "Antrag anpassen"
+          "text": "Adjust request"
         },
         {
           "id": "d",
@@ -97,7 +97,7 @@
           "y": 320,
           "w": 120,
           "h": 60,
-          "text": "Urlaub im HR-System eintragen"
+          "text": "Record leave in HR system"
         },
         {
           "id": "e",
@@ -106,7 +106,7 @@
           "y": 52,
           "w": 36,
           "h": 36,
-          "text": "Urlaub bestätigt"
+          "text": "Leave confirmed"
         }
       ],
       "edges": [
@@ -141,7 +141,7 @@
           "id": "e4",
           "from": "c",
           "to": "d",
-          "label": "Ja",
+          "label": "Yes",
           "type": "flow",
           "fromSide": "bottom",
           "toSide": "auto"
@@ -150,7 +150,7 @@
           "id": "e5",
           "from": "c",
           "to": "f",
-          "label": "Nein",
+          "label": "No",
           "type": "flow",
           "fromSide": "top",
           "toSide": "auto"

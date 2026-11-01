@@ -1,0 +1,34 @@
+{
+  "format": "swimlane-editor",
+  "version": 1,
+  "diagrams": [
+    {
+      "id": "leave-request",
+      "title": "Leave request",
+      "owner": "HR",
+      "description": "From the request to the entry in the HR system.",
+      "lanes": ["Employee", "Team lead", "HR department"],
+      "phases": ["Request", "Review", "Completion"],
+      "nodes": [
+        { "id": "start",   "type": "start",    "lane": "Employee",      "phase": "Request",    "text": "Time off needed" },
+        { "id": "submit",  "type": "task",     "lane": "Employee",      "phase": "Request",    "text": "Submit request" },
+        { "id": "form",    "type": "document", "lane": "Employee",                             "text": "Leave request form" },
+        { "id": "review",  "type": "task",     "lane": "Team lead",     "phase": "Review",     "text": "Review request" },
+        { "id": "ok",      "type": "decision", "lane": "Team lead",     "phase": "Review",     "text": "Approved?" },
+        { "id": "adjust",  "type": "task",     "lane": "Employee",      "phase": "Review",     "text": "Adjust request" },
+        { "id": "record",  "type": "task",     "lane": "HR department", "phase": "Completion", "text": "Record leave in HR system" },
+        { "id": "end",     "type": "end",      "lane": "Employee",      "phase": "Completion", "text": "Leave confirmed" }
+      ],
+      "edges": [
+        { "from": "start",  "to": "submit" },
+        { "from": "submit", "to": "review" },
+        { "from": "submit", "to": "form",   "type": "assoc" },
+        { "from": "review", "to": "ok" },
+        { "from": "ok",     "to": "record", "label": "Yes" },
+        { "from": "ok",     "to": "adjust", "label": "No" },
+        { "from": "adjust", "to": "review" },
+        { "from": "record", "to": "end" }
+      ]
+    }
+  ]
+}

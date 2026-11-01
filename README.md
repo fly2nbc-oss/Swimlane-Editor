@@ -79,7 +79,7 @@ Swimlane Editor works entirely in your browser. It loads nothing from the intern
 
 ## Diagrams with AI
 
-Give an AI the spec [`docs/KI-DIAGRAMME.md`](docs/KI-DIAGRAMME.md) and the example [`docs/examples/urlaubsantrag-einfach.json`](docs/examples/urlaubsantrag-einfach.json). It writes a JSON file with lanes, steps and connections only, without coordinates. **Open** it in the editor: the layout is computed automatically. Then **Save** as `.drawio`.
+Give an AI the spec [`docs/AI-DIAGRAMS.md`](docs/AI-DIAGRAMS.md) and the example [`docs/examples/leave-request-simple.json`](docs/examples/leave-request-simple.json). It writes a JSON file with lanes, steps and connections only, without coordinates. **Open** it in the editor: the layout is computed automatically. Then **Save** as `.drawio`.
 
 ## More
 

@@ -10,7 +10,7 @@ Single-page swimlane process editor. Vanilla JavaScript, no framework, no npm de
 | `vendor/` | jsPDF 2.5.2 and svg2pdf.js 2.2.4 (MIT), inlined at build time |
 | `build.sh` | Creates `swimlane-editor.html` = `src/app.html` with the vendor scripts inlined at `<!--LIBS-->` |
 | `swimlane-editor.html` | **Build output**, the file users open. Do not edit by hand. |
-| `docs/KI-DIAGRAMME.md` | Spec for generating diagrams with AI (JSON format and layout rules) |
+| `docs/AI-DIAGRAMS.md` | Spec for generating diagrams with AI (JSON format and layout rules) |
 | `docs/examples/` | Example diagrams (JSON): with coordinates and without (auto layout) |
 | `LICENSE`, `NOTICE`, `THIRD_PARTY.md` | Apache-2.0 for this project, notices for bundled MIT libraries |
 | `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md` | Public docs, same layout as the other fly2nbc-oss tools (Cerno) |
