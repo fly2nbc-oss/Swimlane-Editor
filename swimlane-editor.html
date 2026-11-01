@@ -678,6 +678,8 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 const $ = s => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
+const safeId = v => SAFE_ID.test(String(v ?? '')) ? String(v) : uid();
 const clone = o => JSON.parse(JSON.stringify(o));
 const today = () => new Date().toISOString().slice(0, 10);
 const fileName = s => (String(s || 'diagram').replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_').slice(0, 80) || 'diagram');
@@ -753,6 +755,7 @@ function sampleDiagram() {
 }
 function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.diagrams)) store = Object.assign(store, s, { settings: Object.assign(store.settings, s.settings || {}) }); } catch (e) { /* ignore */ }
+  store.diagrams = store.diagrams.filter(d => d && typeof d === 'object').map(harden);
   if (!store.diagrams.length) store.diagrams.push(sampleDiagram());
   D = store.diagrams.find(d => d.id === store.currentId) || store.diagrams[0];
   store.currentId = D.id;
@@ -936,10 +939,10 @@ function nodeSVG(n, { interactive, selected }) {
   let extra = '';
   if (interactive) {
     if (selected) extra += `<rect x="${x - 4}" y="${y - 4}" width="${w + 8}" height="${h + 8}" rx="6" fill="none" stroke="#0a5ea8" stroke-width="1.5" stroke-dasharray="4 3" pointer-events="none"/>`;
-    for (const side of ['top', 'right', 'bottom', 'left']) { const p = sidePoint(n, side); extra += `<circle class="port" data-kind="port" data-id="${n.id}" data-side="${side}" cx="${p.x}" cy="${p.y}" r="5.5" fill="#5fa3e0" stroke="#fff" stroke-width="1.5"/>`; }
-    if (selected && sel.size === 1) extra += `<rect data-kind="resize" data-id="${n.id}" x="${x + w - 2}" y="${y + h - 2}" width="9" height="9" fill="#0a5ea8" stroke="#fff" style="cursor:nwse-resize"/>`;
+    for (const side of ['top', 'right', 'bottom', 'left']) { const p = sidePoint(n, side); extra += `<circle class="port" data-kind="port" data-id="${esc(n.id)}" data-side="${side}" cx="${p.x}" cy="${p.y}" r="5.5" fill="#5fa3e0" stroke="#fff" stroke-width="1.5"/>`; }
+    if (selected && sel.size === 1) extra += `<rect data-kind="resize" data-id="${esc(n.id)}" x="${x + w - 2}" y="${y + h - 2}" width="9" height="9" fill="#0a5ea8" stroke="#fff" style="cursor:nwse-resize"/>`;
   }
-  return `<g class="node${selected ? ' sel' : ''}" data-kind="node" data-id="${n.id}">${shape}${label}${extra}</g>`;
+  return `<g class="node${selected ? ' sel' : ''}" data-kind="node" data-id="${esc(n.id)}">${shape}${label}${extra}</g>`;
 }
 function arrowHead(a, b, filled) {
   const L = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / L, uy = (b.y - a.y) / L, len = 10, half = 5;
@@ -959,7 +962,7 @@ function edgeSVG(d, e, { interactive, selected }) {
     const p = labelPos(d, e, pts), lines = wrap(e.label, 120, 11), lw = Math.max(...lines.map(l => measure(l, 11))) + 8, lh = lines.length * 13.75 + 4;
     s += `<rect x="${p.x - lw / 2}" y="${p.y - lh / 2}" width="${lw}" height="${lh}" rx="3" fill="#ffffff" fill-opacity="0.92"/>` + textBlock(lines, p.x, p.y, { size: 11, color: '#2a333d' });
   }
-  if (interactive) s = `<g data-kind="edge" data-id="${e.id}"><path class="edgehit" d="${dstr}" fill="none" stroke="#000" stroke-opacity="0" stroke-width="12"/>${s}</g>`;
+  if (interactive) s = `<g data-kind="edge" data-id="${esc(e.id)}"><path class="edgehit" d="${dstr}" fill="none" stroke="#000" stroke-opacity="0" stroke-width="12"/>${s}</g>`;
   return s;
 }
 function lanesSVG(d, interactive) {
@@ -1045,7 +1048,7 @@ function renderAll() { renderCanvas(); renderList(); renderPanel(); renderSaveSt
 /* ================= left: list & palette ================= */
 function renderList() {
   const ul = $('#diagramList');
-  ul.innerHTML = store.diagrams.map(d => `<li data-id="${d.id}" class="${d.id === D.id ? 'active' : ''}" title="${esc(d.fileName || 'Not saved to a file')}"><span>${(d.fileDirty || !d.fileName) ? '<span class="dot">\u25CF</span> ' : ''}${esc(d.title || 'Untitled')}</span><small>${esc(d.fileName || 'no file')} · v${esc(d.version || '')}</small></li>`).join('');
+  ul.innerHTML = store.diagrams.map(d => `<li data-id="${esc(d.id)}" class="${d.id === D.id ? 'active' : ''}" title="${esc(d.fileName || 'Not saved to a file')}"><span>${(d.fileDirty || !d.fileName) ? '<span class="dot">\u25CF</span> ' : ''}${esc(d.title || 'Untitled')}</span><small>${esc(d.fileName || 'no file')} · v${esc(d.version || '')}</small></li>`).join('');
 }
 $('#diagramList').addEventListener('click', ev => { const li = ev.target.closest('li'); if (li) switchTo(li.dataset.id); });
 function switchTo(id) { commitEditor(); const d = store.diagrams.find(x => x.id === id); if (!d || d === D) return; D = d; store.currentId = id; sel.clear(); selEdge = null; undoStack = []; redoStack = []; save(); renderAll(); fit(); }
@@ -2038,6 +2041,34 @@ function validate(raw) {
   d.edges = (d.edges || []).map(e => ({ ...e, from: String(e.from), to: String(e.to) })).filter(e => ids.has(e.from) && ids.has(e.to)).map(e => ({ fromSide: 'auto', toSide: 'auto', type: 'flow', label: '', ...e, label: String(e.label ?? ''), id: e.id || uid() }));
   if (needsLayout) autoLayout(d, new Map(d.nodes.map(n => [n.id, { lane: n.lane, phase: n.phase, col: n.col }])), { resetSides: false });
   d.nodes.forEach(n => { delete n.lane; delete n.phase; delete n.col; });
+  return harden(d);
+}
+// Opened files are untrusted: ids go into HTML attributes, colours into SVG and draw.io styles.
+// Unsafe ids get a new one (edges follow), unknown colours, types and sides fall back to the default.
+function harden(d) {
+  d.id = safeId(d.id);
+  for (const k of ['title', 'owner', 'version', 'status', 'description', 'created', 'updated']) d[k] = String(d[k] ?? '');
+  d.width = +d.width || 900;
+  d.lanes = Array.isArray(d.lanes) ? d.lanes : [];
+  d.phases = Array.isArray(d.phases) ? d.phases : [];
+  d.nodes = Array.isArray(d.nodes) ? d.nodes : [];
+  d.edges = Array.isArray(d.edges) ? d.edges : [];
+  d.lanes.forEach(l => { l.id = safeId(l.id); });
+  d.phases.forEach(p => { p.id = safeId(p.id); });
+  const ids = new Map();
+  d.nodes.forEach(n => {
+    const id = safeId(n.id); ids.set(n.id, id); n.id = id;
+    if (!TYPES[n.type]) n.type = 'task';
+    for (const k of ['x', 'y', 'w', 'h']) n[k] = +n[k] || 0;
+    if (n.color !== undefined && !SAFE_COLOR.test(n.color)) delete n.color;
+  });
+  d.edges.forEach(e => {
+    e.id = safeId(e.id);
+    e.from = ids.get(e.from) ?? e.from; e.to = ids.get(e.to) ?? e.to;
+    if (!EDGE_TYPES[e.type]) e.type = 'flow';
+    if (!SIDES[e.fromSide]) e.fromSide = 'auto';
+    if (!SIDES[e.toSide]) e.toSide = 'auto';
+  });
   return d;
 }
 
