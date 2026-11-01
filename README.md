@@ -8,6 +8,10 @@
 
 Swimlane Editor draws who does what, in which order: roles as lanes, steps, decisions and documents, phases from left to right. It is a single HTML file that runs in the browser without a server or an internet connection. Diagrams are saved as `.drawio` files, so colleagues can open them in draw.io too, and come out as a PDF ready to print.
 
+<p align="center">
+  <img src="./screenshots/swimlane-editor-main.png" alt="Swimlane Editor showing a leave request process with three lanes and three phases, the element tiles on the left and the diagram details on the right" width="720" />
+</p>
+
 ## What it does
 
 - **Several diagrams at once** – new, duplicate, delete; a dot in the list marks unsaved changes.
