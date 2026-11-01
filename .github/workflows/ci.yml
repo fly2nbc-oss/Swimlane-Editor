@@ -1,0 +1,81 @@
+name: CI
+
+# Pushes and pull requests: rebuild swimlane-editor.html and check that the
+# committed file matches the source. A `v*` tag also drafts a GitHub release with
+# the HTML file attached; the tag needs a matching section in CHANGELOG.md.
+#
+# Every action is pinned to a commit, its version as a comment: a tag that is moved
+# can't bring other code into this workflow. Bumping one is by hand.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths-ignore: ["**.md", "docs/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+# Read-only by default; only the release job may write (it drafts the release).
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./build.sh
+      - name: Committed build output is up to date
+        run: |
+          if ! git diff --quiet -- swimlane-editor.html; then
+            echo "::error::swimlane-editor.html is out of date. Run ./build.sh and commit the result."
+            exit 1
+          fi
+      - name: No network references in the app
+        run: |
+          # The app must stay offline: no URLs except the SVG namespace.
+          if grep -o -E "https?://[^\"' )<>]+" src/app.html | grep -v -x 'http://www.w3.org/2000/svg'; then
+            echo "::error::src/app.html references a network URL."
+            exit 1
+          fi
+
+  release:
+    name: Draft release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Release notes from CHANGELOG.md
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            /^## \[/ { if (found) exit; found = index($0, "## [" v "]") == 1; next }
+            found' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for $version"
+            exit 1
+          fi
+          cat >> notes.md <<'EOF'
+
+          ### Download
+
+          `swimlane-editor.html` – open it in Chrome or Edge. Nothing to install; it works offline.
+          EOF
+          mkdir release
+          cp swimlane-editor.html release/
+          (cd release && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          draft: true
+          name: Swimlane Editor ${{ steps.version.outputs.version }}
+          body_path: notes.md
+          files: release/*

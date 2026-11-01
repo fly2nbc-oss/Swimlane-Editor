@@ -1,0 +1,16 @@
+# Normalize line endings: store as LF in the repo and check out as LF on every
+# platform. build.sh writes LF too, so CI can compare the build output byte by byte.
+* text=auto eol=lf
+
+# Scripts must stay LF regardless of platform.
+*.sh    text eol=lf
+
+# The build output and the minified libraries are compared, never merged.
+swimlane-editor.html  -diff linguist-generated
+vendor/*.js           -diff linguist-vendored
+
+# Binary assets – never touch their bytes.
+*.png   binary
+*.jpg   binary
+*.ico   binary
+*.pdf   binary

@@ -1,0 +1,179 @@
+{
+  "format": "swimlane-editor",
+  "version": 1,
+  "diagrams": [
+    {
+      "id": "urlaubsantrag",
+      "title": "Urlaubsantrag",
+      "owner": "Personal",
+      "version": "1.0",
+      "status": "Draft",
+      "description": "Vom Antrag bis zur Eintragung im HR-System.",
+      "width": 1025,
+      "lanes": [
+        {
+          "id": "l1",
+          "name": "Mitarbeiter",
+          "height": 140
+        },
+        {
+          "id": "l2",
+          "name": "Teamleiter",
+          "height": 140
+        },
+        {
+          "id": "l3",
+          "name": "Personalabteilung",
+          "height": 140
+        }
+      ],
+      "phases": [
+        {
+          "id": "p1",
+          "name": "Antrag",
+          "width": 345
+        },
+        {
+          "id": "p2",
+          "name": "Prüfung",
+          "width": 340
+        },
+        {
+          "id": "p3",
+          "name": "Abschluss",
+          "width": 340
+        }
+      ],
+      "nodes": [
+        {
+          "id": "s",
+          "type": "start",
+          "x": 140,
+          "y": 52,
+          "w": 36,
+          "h": 36,
+          "text": "Urlaub nötig"
+        },
+        {
+          "id": "a",
+          "type": "task",
+          "x": 268,
+          "y": 40,
+          "w": 120,
+          "h": 60,
+          "text": "Antrag stellen"
+        },
+        {
+          "id": "b",
+          "type": "task",
+          "x": 438,
+          "y": 180,
+          "w": 120,
+          "h": 60,
+          "text": "Antrag prüfen"
+        },
+        {
+          "id": "c",
+          "type": "decision",
+          "x": 618,
+          "y": 175,
+          "w": 100,
+          "h": 70,
+          "text": "Genehmigt?"
+        },
+        {
+          "id": "f",
+          "type": "task",
+          "x": 608,
+          "y": 40,
+          "w": 120,
+          "h": 60,
+          "text": "Antrag anpassen"
+        },
+        {
+          "id": "d",
+          "type": "task",
+          "x": 778,
+          "y": 320,
+          "w": 120,
+          "h": 60,
+          "text": "Urlaub im HR-System eintragen"
+        },
+        {
+          "id": "e",
+          "type": "end",
+          "x": 990,
+          "y": 52,
+          "w": 36,
+          "h": 36,
+          "text": "Urlaub bestätigt"
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "from": "s",
+          "to": "a",
+          "label": "",
+          "type": "flow",
+          "fromSide": "auto",
+          "toSide": "auto"
+        },
+        {
+          "id": "e2",
+          "from": "a",
+          "to": "b",
+          "label": "",
+          "type": "flow",
+          "fromSide": "auto",
+          "toSide": "auto"
+        },
+        {
+          "id": "e3",
+          "from": "b",
+          "to": "c",
+          "label": "",
+          "type": "flow",
+          "fromSide": "auto",
+          "toSide": "auto"
+        },
+        {
+          "id": "e4",
+          "from": "c",
+          "to": "d",
+          "label": "Ja",
+          "type": "flow",
+          "fromSide": "bottom",
+          "toSide": "auto"
+        },
+        {
+          "id": "e5",
+          "from": "c",
+          "to": "f",
+          "label": "Nein",
+          "type": "flow",
+          "fromSide": "top",
+          "toSide": "auto"
+        },
+        {
+          "id": "e6",
+          "from": "f",
+          "to": "b",
+          "label": "",
+          "type": "flow",
+          "fromSide": "left",
+          "toSide": "top"
+        },
+        {
+          "id": "e7",
+          "from": "d",
+          "to": "e",
+          "label": "",
+          "type": "flow",
+          "fromSide": "auto",
+          "toSide": "auto"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+# --- Local test output ---
+/out/
+/dist/
+node_modules/
+
+# --- Secrets & local data ---
+.env
+.env.*
+
+# --- IDE / agent (not for distribution) ---
+.vscode/*
+!.vscode/extensions.json
+.idea
+.cursor/
+.claude/
+
+# --- OS / NAS (SynologyDrive) ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+@eaDir/
+#recycle/

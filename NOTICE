@@ -1,0 +1,12 @@
+Swimlane Editor
+Copyright 2026 fly2nbc-oss
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes third-party components. Their terms are in
+THIRD_PARTY.md and in the vendor/ folder:
+
+- jsPDF 2.5.2, MIT License, Copyright (c) 2010-2021 James Hall and
+  (c) 2015-2021 yWorks GmbH. https://github.com/parallax/jsPDF
+- svg2pdf.js 2.2.4, MIT License, Copyright (c) 2015-2023 yWorks GmbH and
+  (c) 2013-2015 Vitaly Puzrin. https://github.com/yWorks/svg2pdf.js

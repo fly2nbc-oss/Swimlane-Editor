@@ -1,0 +1,59 @@
+name: Bug report
+description: Something in Swimlane Editor does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. A description is enough – please don't attach real process diagrams you don't want to share. If a file makes it happen, a small made-up one helps most.
+  - type: input
+    id: version
+    attributes:
+      label: Swimlane Editor version
+      description: The release you downloaded, or the commit if you built it yourself.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and operating system
+      placeholder: "Edge 141 on Windows 11 / Chrome 141 on Ubuntu 24.04"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      multiple: true
+      options:
+        - Drawing and editing
+        - Arrange automatically
+        - Save / open .drawio
+        - Opening a JSON file (also from an AI)
+        - PDF export
+        - SVG or JSON export
+        - Keyboard
+        - Something else
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen again
+      placeholder: |
+        1. Open …
+        2. Press …
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+  - type: textarea
+    id: console
+    attributes:
+      label: Errors in the browser console (F12 › Console), if any
+      render: text
