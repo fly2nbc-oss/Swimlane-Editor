@@ -24,4 +24,4 @@ body:
     id: version
     attributes:
       label: Swimlane Editor version
-      placeholder: "0.1.0"
+      placeholder: "1.0.0"

@@ -7,7 +7,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
-## [0.1.0] – 2026-11-01
+## [1.0.0] – 2026-11-01
 
 The first public version: a swimlane editor in one HTML file that runs offline and saves as draw.io.
 

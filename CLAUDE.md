@@ -18,7 +18,7 @@ Single-page swimlane process editor. Vanilla JavaScript, no framework, no npm de
 
 After every change: run `./build.sh` (Git Bash on Windows; it finds `python3` or `python` and writes LF), then open `swimlane-editor.html` in Chrome or Edge. Commit `src/app.html` and `swimlane-editor.html` together: CI fails when they differ.
 
-Releases: add a `## [x.y.z] – date` section to `CHANGELOG.md` (Keep a Changelog), then tag `vx.y.z` only when the owner says so; CI drafts the release with the HTML file.
+Releases: set `APP_VERSION` in `src/app.html` (shown in the help dialog and the PDF properties), add a `## [x.y.z] – date` section to `CHANGELOG.md` (Keep a Changelog), rebuild, then tag `vx.y.z` only when the owner says so. CI checks that the tag matches `APP_VERSION` and the changelog, and drafts the release with the HTML file.
 
 ## Rules
 
