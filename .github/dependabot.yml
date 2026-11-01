@@ -1,0 +1,13 @@
+# Keeps the pinned actions in ci.yml current: one grouped pull request a month.
+# The app has no package-manager dependencies; vendor/ is updated by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7   # a new version must be a week old: time for a bad release to be pulled
+    groups:
+      actions:
+        patterns: ["*"]

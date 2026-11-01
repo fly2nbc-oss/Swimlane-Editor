@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+### Under the hood
+
+- **Releases can be checked** – each release carries a provenance attestation: `gh attestation verify swimlane-editor.html --repo fly2nbc-oss/Swimlane-Editor` shows it was built by this repository's CI. Published releases can no longer be changed.
+- The CI also checks its own workflow files (actionlint, zizmor); Dependabot keeps the pinned actions current.
+- Instructions for coding agents moved to `AGENTS.md`.
+
 ## [1.0.0] – 2026-11-01
 
 The first public version: a swimlane editor in one HTML file that runs offline and saves as draw.io.

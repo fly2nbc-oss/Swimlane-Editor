@@ -24,7 +24,7 @@ Examples of unacceptable behavior:
 
 Project maintainers may remove, edit, or reject contributions that are not aligned with this Code of Conduct.
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the maintainers via GitHub issues or contact channels listed on the repository.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the maintainer by email to fly2nbc@gmail.com. Reports are handled confidentially.
 
 ## Attribution
 

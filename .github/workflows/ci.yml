@@ -5,7 +5,8 @@ name: CI
 # the HTML file attached; the tag needs a matching section in CHANGELOG.md.
 #
 # Every action is pinned to a commit, its version as a comment: a tag that is moved
-# can't bring other code into this workflow. Bumping one is by hand.
+# can't bring other code into this workflow. Dependabot (.github/dependabot.yml)
+# proposes updates once a month.
 on:
   push:
     branches: [main]
@@ -26,8 +27,11 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - run: ./build.sh
       - name: Committed build output is up to date
         run: |
@@ -43,15 +47,36 @@ jobs:
             exit 1
           fi
 
+  workflows:
+    name: Lint workflows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
+        with:
+          tool: actionlint
+      - run: actionlint
+      - uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+        with:
+          advanced-security: false
+
   release:
     name: Draft release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build]
+    needs: [build, workflows]
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
-      contents: write
+      contents: write      # draft the release
+      id-token: write      # sign the provenance attestation
+      attestations: write  # store it
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Release notes from CHANGELOG.md
         id: version
         run: |
@@ -73,14 +98,19 @@ jobs:
           ### Download
 
           `swimlane-editor.html` – open it in Chrome or Edge. Nothing to install; it works offline.
+
+          Built by this repository's CI: `gh attestation verify swimlane-editor.html --repo fly2nbc-oss/Swimlane-Editor` checks that.
           EOF
           mkdir release
           cp swimlane-editor.html release/
           (cd release && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          draft: true
-          name: Swimlane Editor ${{ steps.version.outputs.version }}
-          body_path: notes.md
-          files: release/*
+          subject-path: release/swimlane-editor.html
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --draft --verify-tag --title "Swimlane Editor $VERSION" --notes-file notes.md

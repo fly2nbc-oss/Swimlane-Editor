@@ -31,7 +31,7 @@ Then open `swimlane-editor.html` in Chrome or Edge.
 | `swimlane-editor.html` | **Build output**, the file users open. Never edit it by hand. |
 | `docs/` | Spec for generating diagrams with AI, and example diagrams |
 
-[`CLAUDE.md`](./CLAUDE.md) describes the architecture in more detail: the data model, the main parts of `src/app.html`, and the working rules.
+[`AGENTS.md`](./AGENTS.md) describes the architecture in more detail: the data model, the main parts of `src/app.html`, and the working rules.
 
 ## Rules
 
@@ -61,8 +61,11 @@ There is no test framework in the repository. What has proven itself is a short 
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on pushes and pull requests to **`main`** and on `v*` tags:
 
-- **Build** – runs `./build.sh` and fails when `swimlane-editor.html` differs from the committed one.
-- **Release** (`v*` tags only) – drafts a GitHub release with `swimlane-editor.html` attached.
+- **Build** – runs `./build.sh` and fails when `swimlane-editor.html` differs from the committed one, or when `src/app.html` contains a network URL.
+- **Lint workflows** – `actionlint` and `zizmor` check the workflow files.
+- **Release** (`v*` tags only) – checks the tag against `APP_VERSION` and `CHANGELOG.md`, attests where `swimlane-editor.html` was built, and drafts a GitHub release with it.
+
+Dependabot proposes updates of the pinned actions once a month.
 
 ## Pull requests
 
