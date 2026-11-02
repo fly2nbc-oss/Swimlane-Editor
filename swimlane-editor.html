@@ -2165,16 +2165,32 @@ function phaseLabelsFor(d, a, b) {
   });
   return s;
 }
-// layout of one diagram in the PDF: one page, or segments at readable size (lane headers repeated)
+// layout of one diagram in the PDF: one page while it is still readable there, otherwise tiles at readable size,
+// split at phase borders (left to right) and at lane borders (top to bottom); lane headers and the phase row repeat
+const PDF_MIN = 0.20, PDF_READABLE = 0.30; // mm per model px: smallest scale for one page, scale of tiles
 function pdfLayout(d, multi) {
   const { jsPDF } = window.jspdf;
-  const b = contentBounds(d), pad = 12, y1 = b.y1 - pad, h = b.y2 - b.y1 + 2 * pad;
+  const b = contentBounds(d), pad = 12, y1 = b.y1 - pad, y2 = b.y2 + pad, h = y2 - y1;
   const area = pdfFrame(new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }), d, 1, 1); // drawing area, same on every page of d
-  const fullW = b.x2 - b.x1 + 2 * pad, READABLE = 0.30; // mm per model px, about 80 % of screen size
-  if (!multi || Math.min(area.w / fullW, area.h / h) >= Math.min(READABLE, area.h / h) - 1e-6) return { d, h, one: true, pages: 1 };
-  const scale = Math.min(READABLE, area.h / h), left = Math.min(b.x1, 0) - pad, headW = CX - left; // header column
-  const segs = pageSegments(d, poolW(d) + 2, area.w / scale - headW - 4);
-  return { d, h, y1, scale, left, headW, segs, pages: segs.length };
+  const fullW = b.x2 - b.x1 + 2 * pad, fit = Math.min(area.w / fullW, area.h / h);
+  if (!multi || fit >= PDF_MIN) return { d, h, one: true, pages: 1 };
+  const left = Math.min(b.x1, 0) - pad, headW = CX - left, topH = -y1; // repeated header column and phase row
+  const tops = laneTops(d), laneH = d.lanes.map(l => l.height);
+  const tile = scale => {
+    const bandMax = area.h / scale - topH - 8, bands = [];
+    if (h * scale <= area.h) bands.push([0, y2]);
+    else d.lanes.forEach((l, i) => {
+      const last = bands[bands.length - 1], end = i === d.lanes.length - 1 ? y2 : tops[i] + l.height;
+      if (last && end - last[0] <= bandMax) last[1] = end; else bands.push([tops[i], end]);
+    });
+    const segs = pageSegments(d, poolW(d) + 2, area.w / scale - headW - 4);
+    return { d, y1, topH, scale, left, headW, segs, bands, pages: segs.length * bands.length };
+  };
+  // the fewest pages between the smallest and the full readable scale; with equal pages the larger scale
+  const most = Math.min(PDF_READABLE, area.h / (topH + Math.max(...laneH) + 8));
+  let best = null;
+  for (let sc = most; sc >= Math.min(PDF_MIN, most) - 1e-9; sc -= 0.005) { const t = tile(sc); if (!best || t.pages < best.pages) best = t; }
+  return best;
 }
 // all diagrams of one file go into one PDF; page numbers run through
 async function exportPDF(list, multi, fname) {
@@ -2195,19 +2211,24 @@ async function exportPDF(list, multi, fname) {
       if (scale < 0.2) small = true;
       continue;
     }
-    const { y1, scale, left, headW, segs } = L, markup = diagramMarkup(d, { interactive: false });
-    for (let i = 0; i < segs.length; i++) {
+    const { y1, topH, scale, left, headW, segs, bands } = L, markup = diagramMarkup(d, { interactive: false }), nx = segs.length;
+    for (let bi = 0; bi < bands.length; bi++) for (let xi = 0; xi < nx; xi++) {
       if (page++) doc.addPage('a4', 'landscape');
-      const ar = pdfFrame(doc, d, page, total), [a, bb] = segs[i], cw = bb - a, W = headW + cw + 4;
-      const str = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${h}" viewBox="${left} ${y1} ${W} ${h}">` +
-        `<defs><clipPath id="cc"><rect x="${CX}" y="${y1}" width="${cw + 4}" height="${h}"/></clipPath><clipPath id="cl"><rect x="${left}" y="${y1}" width="${headW}" height="${h}"/></clipPath></defs>` +
-        `<g clip-path="url(#cc)"><g transform="translate(${CX - a},0)">${markup}${phaseLabelsFor(d, a, bb)}</g></g>` +
-        `<g clip-path="url(#cl)">${markup}</g></svg>`;
-      await svgToPdf(doc, str, ar.x, ar.y, W * scale, h * scale);
+      const ar = pdfFrame(doc, d, page, total), [a, bb] = segs[xi], [ya, yb] = bands[bi], cw = bb - a, bh = yb - ya, W = headW + cw + 4, H = topH + bh + 4;
+      const part = (id, x, y, w, hh, dx, dy, extra = '') => `<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${hh}"/></clipPath>` +
+        `<g clip-path="url(#${id})"><g transform="translate(${dx},${dy})">${markup}${extra}</g></g>`;
+      const str = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="${left} ${y1} ${W} ${H}">` +
+        part('cc', CX, 0, cw + 4, bh + 4, CX - a, -ya) +                          // content
+        part('cp', CX, y1, cw + 4, topH, CX - a, 0, phaseLabelsFor(d, a, bb)) +   // phase row
+        part('cl', left, 0, headW, bh + 4, 0, -ya) +                               // lane headers
+        part('ck', left, y1, headW, topH, 0, 0) + '</svg>';                        // corner
+      await svgToPdf(doc, str, ar.x, ar.y, W * scale, H * scale);
       doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(120, 128, 138);
-      const ty = ar.y + h * scale + 4;
-      if (i > 0) doc.text('<- continued from page ' + (base + i), ar.x + headW * scale, ty);
-      if (i < segs.length - 1) doc.text('continued on page ' + (base + i + 2) + ' ->', ar.x + W * scale, ty, { align: 'right' });
+      const ty = ar.y + H * scale + 4, here = base + bi * nx + xi + 1;
+      if (xi > 0) doc.text('<- continued from page ' + (here - 1), ar.x + headW * scale, ty);
+      if (xi < nx - 1) doc.text('continued on page ' + (here + 1) + ' ->', ar.x + W * scale, ty, { align: 'right' });
+      const v = [bi > 0 ? 'lanes above: page ' + (here - nx) : '', bi < bands.length - 1 ? 'lanes below: page ' + (here + nx) : ''].filter(Boolean).join('   |   ');
+      if (v) doc.text(v, ar.x + (headW + cw / 2) * scale, ty, { align: 'center' });
     }
   }
   if (small) toast(multi ? 'Diagram is very tall: text may be small.' : 'Large diagram: text may be small. Try "PDF, multiple pages".');

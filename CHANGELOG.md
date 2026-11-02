@@ -23,6 +23,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ### Fixed
 
+- **PDF, multiple pages** keeps a diagram on one page while it is still readable there (at least 0.2 mm per pixel) and otherwise splits it with the fewest pages: left to right at phase borders and now also top to bottom at lane borders, so a tall diagram with many lanes is no longer squeezed onto one page. Lane headers and the phase row repeat on every page; the footer says where it continues.
 - **Notes fit their text**: a note is as high as its text, so the bracket encloses all of it; drag the handle at the bottom right to make it wider (it gets lower). Its lane grows with it if needed. Arrange and JSON import without coordinates make a note wider when the room to its right is free (up to the phase border). The dotted line meets a wide note straight below its step.
 - Deleting the last diagram leaves an empty page instead of creating a new "New process"; it stays empty after a reload. The example diagram appears only on the very first start.
 - A connection that leaves an element at the top or bottom (e.g. a decision) while its target lies beside it runs out of that side first instead of turning right at the corner or back through the element.

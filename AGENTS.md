@@ -66,7 +66,7 @@ Then open `swimlane-editor.html` in Chrome or Edge. Commit `src/app.html` and `s
 - **files**: File System Access API; handles in IndexedDB (`swimlane-editor` / `handles`, key = `fileGroup` or diagram id) so Ctrl+S writes to the same file; `saveFile()` writes every diagram of the group (`groupOf()`) as one page. Fallback: download.
 - **import**: `validate()` normalises JSON and draw.io diagrams, then `harden()`.
 - **automatic layout**: `autoLayout(d, hints)`: loops broken by DFS, columns by longest path over flow edges, phases kept in order, extra rows for parallel branches, artifacts below their step. Used by Arrange (`L`) and on JSON import without `x`/`y` (hints `lane`, `phase`, `col`).
-- **PDF**: `exportPDF(list, multi, name?)` puts several diagrams into one PDF (the file's group, or all), `pdfLayout()` plans each diagram's pages; `pdfFrame()` draws header and footer; multi-page splits at phase borders or gaps (`pageSegments()`).
+- **PDF**: `exportPDF(list, multi, name?)` puts several diagrams into one PDF (the file's group, or all), `pdfLayout()` plans each diagram's pages; `pdfFrame()` draws header and footer; multi-page keeps a diagram on one page down to `PDF_MIN`, else tiles it with the fewest pages: at phase borders or gaps (`pageSegments()`) and at lane borders.
 
 ## Tests
 
