@@ -1,4 +1,4 @@
-# Swimlane Editor
+# <img src="docs/icon.svg" width="36" height="36" alt="" align="top"> Swimlane Editor
 
 **Swimlane process diagrams in one HTML file – offline, no installation, saved as draw.io.**
 
@@ -29,7 +29,7 @@ Download `swimlane-editor.html` from [Releases](https://github.com/fly2nbc-oss/S
 |---|---|
 | Add element | Drag a tile onto a lane, or double-click an empty spot |
 | Add next step | Select an element, click a tile: placed to the right and connected |
-| Connect | Drag from a blue dot of an element to another element |
+| Connect | Drag from a blue dot of an element to another element, or click the dot, scroll if needed, and click the other element (`Esc` cancels), or select two elements with `Shift` + click and press `C` |
 | Edit text | Double-click, or `Enter` |
 | Save / open | `Ctrl+S` / `Ctrl+O` – after the first save, `Ctrl+S` writes to the same file; diagrams opened from one file (draw.io pages or a JSON list) are saved together as pages of one `.drawio` file |
 

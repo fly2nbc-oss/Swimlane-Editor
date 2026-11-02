@@ -7,13 +7,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.1.0] – 2026-11-02
+
 ### Added
 
+- **App icon**: in the browser tab and in the toolbar; also `docs/icon.svg`.
+- **`C` connects the selection**: select elements with `Shift` + click in flow order and press `C`; they are connected first to second (to third …).
+- **Connect by clicking**: click a blue dot, scroll if needed, then click the other element – no dragging across a long diagram. A dashed line follows the mouse; `Esc` or a click on an empty spot cancels.
 - **Move connections**: drag a line to move its middle segment, e.g. when it lies on another line. "Reset line position" in the panel, a change of side, Reverse or Arrange put it back. The offset is saved in JSON and `.drawio` files (`swlBend`).
-- **Files with several diagrams are saved together**: diagrams opened from one file – a draw.io file with several pages or a JSON file with several diagrams – stay linked; `Ctrl+S` writes all of them as pages of one `.drawio` file. The status bar shows the page ("page 2 of 3"). A draw.io file with several pages stays linked to its file; a JSON list asks for a `.drawio` name on its first save.
-- **Save suggests the JSON file's name**: a diagram opened from `purchasing.json` suggests `purchasing.drawio` on its first save (before: the diagram title). Duplicate makes a separate diagram.
+- **Files with several diagrams are saved together**: diagrams opened from one file – a draw.io file with several pages or a JSON file with several diagrams – stay linked; `Ctrl+S` writes all of them as pages of one `.drawio` file. The status bar shows the page ("page 2 of 3"). A draw.io file with several pages stays linked to its file; a JSON list asks for a `.drawio` name on its first save. Duplicate makes a separate diagram.
+- **Save suggests the JSON file's name**: a diagram opened from `purchasing.json` suggests `purchasing.drawio` on its first save (before: the diagram title).
 - **Lines avoid elements**: when a connection would run through an element, the automatic routing tries other positions of its middle segment and, for sides set to Auto, other sides, and takes the route through the fewest elements.
 - **Overlapping lines are spread apart**: when the middle segments of several connections would lie on top of each other, they are drawn side by side.
+
+### Fixed
+
+- A connection that leaves an element at the top or bottom (e.g. a decision) while its target lies beside it runs out of that side first instead of turning right at the corner or back through the element.
+- Branches of a decision leave from different corners: when two branches set to Auto would share a corner, the straightest keeps it and the other uses a free one (e.g. Yes from the top, No to the right).
+- A moved middle segment keeps a short distance to the elements instead of running along their edge.
 
 ## [1.0.2] – 2026-11-02
 

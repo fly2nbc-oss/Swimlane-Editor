@@ -34,6 +34,7 @@ Then open `swimlane-editor.html` in Chrome or Edge. Commit `src/app.html` and `s
 | `src/app.html` | **The source.** All HTML, CSS and JS. Edit this. |
 | `vendor/` | jsPDF 2.5.2 and svg2pdf.js 2.2.4 (MIT), inlined at `<!--LIBS-->` |
 | `swimlane-editor.html` | **Build output**, the file users open. Never edit by hand. |
+| `docs/icon.svg` | App icon; the same drawing is inlined in `src/app.html` (favicon, toolbar) |
 | `docs/AI-DIAGRAMS.md`, `docs/examples/` | JSON spec for AI-generated diagrams; examples with and without coordinates |
 | `screenshots/` | README screenshot, made from `docs/examples/leave-request-simple.json` |
 | `.github/` | CI, Dependabot, issue forms |
