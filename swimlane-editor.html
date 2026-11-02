@@ -60,6 +60,9 @@ h3:first-child{margin-top:0}
 #diagramList li.active{background:var(--accent-weak);color:var(--accent);font-weight:600}
 #diagramList li small{color:var(--muted);font-weight:400;font-size:11px}
 .row{display:flex;gap:6px;flex-wrap:wrap}
+.row.icons{gap:3px}
+.ibtn{padding:3px 4px;line-height:0;display:inline-flex;align-items:center;justify-content:center}
+.ibtn:nth-child(6){margin-right:6px}
 #palette{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .tile{border:1px solid var(--border);border-radius:8px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:grab;user-select:none;font-size:11.5px;background:#fff}
 .tile:hover{border-color:var(--accent);background:var(--accent-weak)}
@@ -1522,6 +1525,21 @@ const panel = $('#panel');
 let panelSnap = null; // undo grouping for typing in panel fields
 function panelInput(fn) { return ev => { if (!panelSnap) { panelSnap = snapshot(); pushUndo(panelSnap); } fn(ev.target.value, ev); D.updated = new Date().toISOString(); D.fileDirty = true; save(); renderCanvas(); renderList(); }; }
 panel.addEventListener('focusout', () => { panelSnap = null; });
+// icons of the multi-selection panel: [action, tooltip, drawing]; one-letter actions distribute
+const ALIGN_ICONS = (() => {
+  const L = (x1, y1, x2, y2) => `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`;
+  const R = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1" fill="currentColor" fill-opacity=".55"/>`;
+  return [
+    ['left', 'Align left edges', L(2, 1.5, 2, 14.5) + R(4, 3, 9, 3.5) + R(4, 9.5, 6, 3.5)],
+    ['center', 'Align centers in a column', L(8, 1.5, 8, 14.5) + R(3.5, 3, 9, 3.5) + R(5, 9.5, 6, 3.5)],
+    ['right', 'Align right edges', L(14, 1.5, 14, 14.5) + R(3, 3, 9, 3.5) + R(6, 9.5, 6, 3.5)],
+    ['top', 'Align top edges', L(1.5, 2, 14.5, 2) + R(3, 4, 3.5, 9) + R(9.5, 4, 3.5, 6)],
+    ['middle', 'Align centers in a row', L(1.5, 8, 14.5, 8) + R(3, 3.5, 3.5, 9) + R(9.5, 5, 3.5, 6)],
+    ['bottom', 'Align bottom edges', L(1.5, 14, 14.5, 14) + R(3, 3, 3.5, 9) + R(9.5, 6, 3.5, 6)],
+    ['x', 'Distribute evenly from left to right (3 or more)', L(1.5, 2, 1.5, 14) + L(14.5, 2, 14.5, 14) + R(3.5, 5, 2.5, 6) + R(6.75, 3.5, 2.5, 9) + R(10, 5, 2.5, 6)],
+    ['y', 'Distribute evenly from top to bottom (3 or more)', L(2, 1.5, 14, 1.5) + L(2, 14.5, 14, 14.5) + R(5, 3.5, 6, 2.5) + R(3.5, 6.75, 9, 2.5) + R(5, 10, 6, 2.5)],
+  ];
+})();
 // change the type; the size stays unless a circle or a decision is involved, the centre stays
 function setNodeType(n, type) {
   if (!TYPES[type] || n.type === type) return;
@@ -1574,12 +1592,8 @@ function renderPanel() {
     const opt = (v, label, on) => `<option value="${v}" ${on ? 'selected' : ''}>${label}</option>`;
     panel.innerHTML = `<h3>${ns.length} elements selected</h3>
       <div class="hint">Align and size follow the first selected element.</div>
-      <label class="f">Align horizontally</label>
-      <div class="row"><button data-al="left" title="Left edges">Left</button><button data-al="center" title="Centers one above the other (column)">Center</button><button data-al="right" title="Right edges">Right</button></div>
-      <label class="f">Align vertically</label>
-      <div class="row"><button data-al="top" title="Top edges">Top</button><button data-al="middle" title="Centers side by side (row)">Middle</button><button data-al="bottom" title="Bottom edges">Bottom</button></div>
-      <label class="f">Distribute evenly</label>
-      <div class="row"><button data-dist="x" ${ns.length < 3 ? 'disabled' : ''}>Horizontally</button><button data-dist="y" ${ns.length < 3 ? 'disabled' : ''}>Vertically</button></div>
+      <label class="f">Align and distribute</label>
+      <div class="row icons">${ALIGN_ICONS.map(([k, t, d]) => `<button class="ibtn" data-${k.length === 1 ? 'dist' : 'al'}="${k}" title="${t}" aria-label="${t}" ${k.length === 1 && ns.length < 3 ? 'disabled' : ''}><svg viewBox="0 0 16 16" width="17" height="17" aria-hidden="true">${d}</svg></button>`).join('')}</div>
       <label class="f">Same size as the first</label>
       <div class="row"><button data-size="w">Width</button><button data-size="h">Height</button><button data-size="wh">Both</button></div>
       <label class="f">Element type</label><select id="mType">${type ? '' : opt('', '(mixed)', true)}${Object.entries(TYPES).map(([k, v]) => opt(k, v.label, type === k)).join('')}</select>

@@ -11,7 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ### Added
 
-- **More options for several selected elements**: align left, center, right, top, middle or bottom (to the first selected element), distribute evenly horizontally or vertically, same width and/or height as the first, and set element type, fill color or lane for all of them at once; "Connect in this order" does what `C` does.
+- **More options for several selected elements**: icon buttons align left, center, right, top, middle or bottom (to the first selected element) and distribute evenly horizontally or vertically (tooltips name them); also same width and/or height as the first, and set element type, fill color or lane for all of them at once; "Connect in this order" does what `C` does.
 - **PDF of a whole file**: when a file holds several diagrams, the PDF export puts all of them into one PDF (named after the file), each with its own header; page numbers run through. **All diagrams → PDF** in the Export menu does the same for every diagram in the editor.
 - **App icon**: in the browser tab and in the toolbar; also `docs/icon.svg`.
 - **`C` connects the selection**: select elements with `Shift` + click in flow order and press `C`; they are connected first to second (to third …).
