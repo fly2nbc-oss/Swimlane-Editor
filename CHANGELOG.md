@@ -7,11 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.0.2] – 2026-11-02
+
+### Changed
+
+- The help no longer refers to another app; the list of keys is unchanged.
+
 ## [1.0.1] – 2026-11-02
 
 ### Changed
 
-- **`Shift+Tab` shows or hides all bars** – both sidebars and the toolbar, as in Cerno: while any of them is shown it hides them all, otherwise it shows them all. `Alt+0` does the same (it switched only the two sidebars before).
+- **`Shift+Tab` shows or hides all bars** – both sidebars and the toolbar: while any of them is shown it hides them all, otherwise it shows them all. `Alt+0` does the same (it switched only the two sidebars before).
 
 ### Fixed
 

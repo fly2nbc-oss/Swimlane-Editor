@@ -230,7 +230,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.0.1'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.0.2'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -985,7 +985,7 @@ document.addEventListener('keydown', ev => {
   }
 });
 
-/* ================= keyboard shortcuts (aligned with Cerno where the meaning matches) ================= */
+/* ================= keyboard shortcuts ================= */
 const SHORTCUTS = [
   ['View and panels', [
     ['[F10] or [Alt]+[1]', 'Left sidebar (diagrams, elements) on / off'],
@@ -1027,7 +1027,7 @@ const SHORTCUTS = [
 ];
 const kbd = t => esc(t).replace(/\[([^\]]+)\]/g, '<kbd>$1</kbd>');
 $('#helpBody').innerHTML = SHORTCUTS.map(([g, rows]) => `<h4>${g}</h4><table>${rows.map(([k, v]) => `<tr><td>${kbd(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`).join('') +
-  `<p class="hint">Swimlane Editor ${APP_VERSION} \u00B7 Copyright 2026 fly2nbc-oss \u00B7 Apache License 2.0. Includes jsPDF and svg2pdf.js (MIT).</p><p class="hint">Keys follow Cerno where the meaning is the same: F10, Tab and T for the bars, Shift+Tab for all of them, Z / Ctrl+0 / Ctrl+1 for zoom, F for full screen, H for help, 6 to 9 for colour labels, Ctrl+Z for undo, Ctrl+O to open.</p>`;
+  `<p class="hint">Swimlane Editor ${APP_VERSION} \u00B7 Copyright 2026 fly2nbc-oss \u00B7 Apache License 2.0. Includes jsPDF and svg2pdf.js (MIT).</p>`;
 const openHelp = () => { if (!$('#helpDlg').open) $('#helpDlg').showModal(); };
 $('#bHelp').onclick = openHelp;
 $('#bHelpClose').onclick = () => $('#helpDlg').close();
@@ -1035,7 +1035,7 @@ $('#bHelpClose').onclick = () => $('#helpDlg').close();
 const COLOR_KEYS = { Digit6: '#FBE9E7', Digit7: '#FFF5DD', Digit8: '#E6F5EA', Digit9: '#EAF2FB', Digit0: null };
 let fitZoom = null;
 function toggleToolbar() { const ui = store.settings.ui; ui.top = ui.top === false; applySidebars(); save(); if (!ui.top) toast('Toolbar hidden. Press T to show it again.'); }
-// Shift+Tab (as in Cerno): hides every bar while any is shown, shows all of them when none is
+// Shift+Tab: hides every bar while any is shown, shows all of them when none is
 function toggleAllBars() {
   commitEditor(); const ui = store.settings.ui, show = !(ui.left || ui.right || ui.top !== false);
   ui.left = ui.right = ui.top = show; applySidebars(); save();

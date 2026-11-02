@@ -60,7 +60,7 @@ Then open `swimlane-editor.html` in Chrome or Edge. Commit `src/app.html` and `s
 - **rendering**: `diagramMarkup(d, {interactive})` builds SVG as a string, used for canvas, SVG export and PDF alike.
 - **canvas interaction**: pointer events with drag modes (`move`, `resize`, `connect`, `lane`, `phase`, `poolw`, `box`); own double-click detection because the SVG is re-rendered between clicks.
 - **right panel**: `renderPanel()` per selection (edge, single node, multi, diagram).
-- **keyboard**: keys follow Cerno where the meaning matches. `SHORTCUTS` also drives the help dialog (`H`).
+- **keyboard**: `SHORTCUTS` also drives the help dialog (`H`).
 - **draw.io**: `drawioDiagram()` writes `<object>` cells with `swl*` properties so files round-trip; `parseDrawio()` / `modelToDiagram()` read them back, including compressed files and pools drawn in draw.io.
 - **files**: File System Access API; handles in IndexedDB (`swimlane-editor` / `handles`) so Ctrl+S writes to the same file. Fallback: download.
 - **import**: `validate()` normalises JSON and draw.io diagrams, then `harden()`.
