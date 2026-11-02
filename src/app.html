@@ -272,6 +272,20 @@ function wrap(text, maxW, size = 12, bold = false) {
   return out;
 }
 // text block; mode 'middle' centers vertically around y, 'top' starts at y
+// a note grows downwards with its text so the bracket encloses it; its lane grows with it (lanes below move down)
+function fitNote(d, n) {
+  if (n.type !== 'note' || !n.w) return;
+  const need = Math.ceil((wrap(n.text, n.w - 16, 11.5).length * 11.5 * 1.25 + 12) / GRID) * GRID;
+  if (need <= n.h) return;
+  const tops = laneTops(d), cy = n.y + n.h / 2;
+  const i = d.lanes.findIndex((l, k) => cy >= tops[k] && cy < tops[k] + l.height);
+  n.h = need;
+  if (i < 0) return;
+  const bottom = tops[i] + d.lanes[i].height, over = Math.ceil((n.y + need + 10 - bottom) / GRID) * GRID;
+  if (over <= 0) return;
+  for (const m of d.nodes) if (m.y + m.h / 2 >= bottom) m.y += over;
+  d.lanes[i].height += over;
+}
 function textBlock(lines, x, y, { size = 12, anchor = 'middle', mode = 'middle', color = '#1f2933', bold = false, transform = '' } = {}) {
   if (!lines.length || (lines.length === 1 && !lines[0])) return '';
   const lh = size * 1.25;
@@ -347,7 +361,7 @@ function replaceCurrent(obj) { const i = store.diagrams.findIndex(d => d.id === 
 function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); replaceCurrent(JSON.parse(undoStack.pop())); cleanSel(); changed(false); }
 function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); replaceCurrent(JSON.parse(redoStack.pop())); cleanSel(); changed(false); }
 function cleanSel() { const ids = new Set(D.nodes.map(n => n.id)); sel = new Set([...sel].filter(id => ids.has(id))); if (selEdge && !D.edges.some(e => e.id === selEdge)) selEdge = null; }
-function changed(touch = true) { if (touch) D.updated = new Date().toISOString(); D.fileDirty = true; save(); renderAll(); }
+function changed(touch = true) { D.nodes.forEach(n => fitNote(D, n)); if (touch) D.updated = new Date().toISOString(); D.fileDirty = true; save(); renderAll(); }
 // convenience: snapshot, mutate, commit
 function mutate(fn) { pushUndo(); fn(); changed(); }
 
@@ -1857,6 +1871,7 @@ function harden(d) {
     for (const k of ['x', 'y', 'w', 'h']) n[k] = +n[k] || 0;
     if (n.color !== undefined && !SAFE_COLOR.test(n.color)) delete n.color;
   });
+  d.nodes.forEach(n => fitNote(d, n));
   d.edges.forEach(e => {
     e.id = safeId(e.id);
     e.from = ids.get(e.from) ?? e.from; e.to = ids.get(e.to) ?? e.to;
