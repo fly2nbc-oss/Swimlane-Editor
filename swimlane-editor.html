@@ -66,6 +66,9 @@ h3:first-child{margin-top:0}
 .tile svg{width:44px;height:30px}
 .hint{color:var(--muted);font-size:12px;margin:8px 0}
 #canvasWrap{overflow:auto;position:relative;background:var(--bg)}
+#emptyState{display:none;position:absolute;inset:0;align-items:center;justify-content:center;color:var(--muted,#667);font-size:15px}
+body.nodiagram #emptyState{display:flex}
+body.nodiagram #palette{opacity:.45;pointer-events:none}
 #stage{position:relative;display:inline-block;margin:0}
 #canvas{display:block;user-select:none;touch-action:none}
 #canvas .node{cursor:move}
@@ -166,6 +169,7 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
 
   <main id="canvasWrap">
     <div id="stage"><svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div id="emptyState"><span>No diagram. Click <b>+ New</b> on the left or <b>Open…</b> at the top.</span></div>
   </main>
 
   <aside class="right" id="panel"></aside>
@@ -758,11 +762,12 @@ function sampleDiagram() {
   return d;
 }
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.diagrams)) store = Object.assign(store, s, { settings: Object.assign(store.settings, s.settings || {}) }); } catch (e) { /* ignore */ }
+  let stored = false; // a stored, empty list stays empty: the example is only for the very first start
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.diagrams)) { stored = true; store = Object.assign(store, s, { settings: Object.assign(store.settings, s.settings || {}) }); } } catch (e) { /* ignore */ }
   store.diagrams = store.diagrams.filter(d => d && typeof d === 'object').map(harden);
-  if (!store.diagrams.length) store.diagrams.push(sampleDiagram());
-  D = store.diagrams.find(d => d.id === store.currentId) || store.diagrams[0];
-  store.currentId = D.id;
+  if (!store.diagrams.length && !stored) store.diagrams.push(sampleDiagram());
+  D = store.diagrams.find(d => d.id === store.currentId) || store.diagrams[0] || null;
+  store.currentId = D ? D.id : null;
 }
 let saveTimer;
 function save() {
@@ -1182,12 +1187,24 @@ function renderCanvas() {
   $('#bUndo').disabled = !undoStack.length; $('#bRedo').disabled = !redoStack.length;
 }
 const boxRect = (a, b) => ({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) });
-function renderAll() { renderCanvas(); renderList(); renderPanel(); renderSaveState(); }
+// no diagram (all deleted): empty page; only New, Open, help, settings and the bars work
+const NEEDS_DIAGRAM = ['bUndo', 'bRedo', 'bZoomOut', 'bZoomIn', 'bFit', 'bArrange', 'bDelete', 'bSave', 'bExport', 'bDup', 'bDel'];
+function renderAll() {
+  document.body.classList.toggle('nodiagram', !D);
+  for (const id of NEEDS_DIAGRAM) $('#' + id).disabled = !D;
+  if (!D) {
+    svg.innerHTML = ''; svg.setAttribute('width', 0); svg.setAttribute('height', 0);
+    renderList(); $('#saveState').textContent = ''; $('#saveState').title = '';
+    panel.innerHTML = '<h3>No diagram</h3><p class="hint">Click New to start a diagram, or Open a <code>.drawio</code> or JSON file.</p>';
+    return;
+  }
+  renderCanvas(); renderList(); renderPanel(); renderSaveState();
+}
 
 /* ================= left: list & palette ================= */
 function renderList() {
   const ul = $('#diagramList');
-  ul.innerHTML = store.diagrams.map(d => `<li data-id="${esc(d.id)}" class="${d.id === D.id ? 'active' : ''}" title="${esc(d.fileName || 'Not saved to a file')}"><span>${(d.fileDirty || !d.fileName) ? '<span class="dot">\u25CF</span> ' : ''}${esc(d.title || 'Untitled')}</span><small>${esc(d.fileName || 'no file')} · v${esc(d.version || '')}</small></li>`).join('');
+  ul.innerHTML = store.diagrams.map(d => `<li data-id="${esc(d.id)}" class="${D && d.id === D.id ? 'active' : ''}" title="${esc(d.fileName || 'Not saved to a file')}"><span>${(d.fileDirty || !d.fileName) ? '<span class="dot">\u25CF</span> ' : ''}${esc(d.title || 'Untitled')}</span><small>${esc(d.fileName || 'no file')} · v${esc(d.version || '')}</small></li>`).join('');
 }
 $('#diagramList').addEventListener('click', ev => { const li = ev.target.closest('li'); if (li) switchTo(li.dataset.id); });
 function switchTo(id) { commitEditor(); const d = store.diagrams.find(x => x.id === id); if (!d || d === D) return; endLink();D = d; store.currentId = id; sel.clear(); selEdge = null; undoStack = []; redoStack = []; save(); renderAll(); fit(); }
@@ -1197,9 +1214,16 @@ $('#bDel').onclick = () => {
   if (!confirm(`Delete diagram "${D.title}"? This cannot be undone.`)) return;
   store.diagrams = store.diagrams.filter(d => d !== D);
   if (D.fileGroup) for (const d of store.diagrams) if (d.fileGroup === D.fileGroup) d.fileDirty = true; // its file still has the page
-  if (!store.diagrams.length) store.diagrams.push(newDiagram());
-  D = null; switchTo(store.diagrams[0].id);
+  if (store.diagrams.length) { D = null; switchTo(store.diagrams[0].id); return; }
+  endLink(); D = null; store.currentId = null; sel.clear(); selEdge = null; undoStack = []; redoStack = []; save(); renderAll();
 };
+// without a diagram, keys and clicks that need one do nothing (capture: before every other handler)
+document.addEventListener('keydown', ev => {
+  if (D || ev.target.matches('input,textarea,select') || document.querySelector('dialog[open]')) return;
+  const mod = ev.ctrlKey || ev.metaKey, k = ev.key.toLowerCase();
+  if ((mod && k === 'o') || (!mod && /^(h|\?|f1|escape|tab)$/.test(k)) || (ev.altKey && /^(Digit|Numpad)[012]$/.test(ev.code))) return;
+  ev.stopImmediatePropagation(); if (mod) ev.preventDefault();
+}, true);
 function paletteIcon(type) {
   const n = { id: 'p', type, x: 0, y: 0, w: TYPES[type].w, h: TYPES[type].h, text: '' };
   const sc = Math.min(40 / n.w, 26 / n.h, 1), ox = (44 - n.w * sc) / 2, oy = (30 - n.h * sc) / 2;
@@ -1210,7 +1234,7 @@ $('#palette').addEventListener('dragstart', ev => { const t = ev.target.closest(
 $('#palette').addEventListener('click', ev => { const t = ev.target.closest('.tile'); if (t) quickAdd(t.dataset.type); });
 $('#canvasWrap').addEventListener('dragover', ev => ev.preventDefault());
 $('#canvasWrap').addEventListener('drop', ev => {
-  ev.preventDefault();
+  ev.preventDefault(); if (!D) return;
   const data = ev.dataTransfer.getData('text/plain');
   if (!data.startsWith('swimlane:')) return;
   const type = data.slice(9); if (!TYPES[type]) return;
@@ -1224,6 +1248,7 @@ function addNode(type, c) {
 }
 function overlaps(n) { return D.nodes.some(o => o !== n && n.x < o.x + o.w + 10 && n.x + n.w + 10 > o.x && n.y < o.y + o.h + 10 && n.y + n.h + 10 > o.y); }
 function quickAdd(type) {
+  if (!D) return;
   pushUndo();
   const src = sel.size === 1 ? nodeById(D, [...sel][0]) : null;
   let c;
@@ -1266,7 +1291,7 @@ function applyPhaseRelative(rel) {
 }
 svg.addEventListener('mousedown', ev => ev.preventDefault());
 svg.addEventListener('pointerdown', ev => {
-  if (ev.button !== 0) return;
+  if (ev.button !== 0 || !D) return;
   commitEditor();
   if (document.activeElement && document.activeElement !== document.body && !document.activeElement.classList.contains('inlineEdit')) document.activeElement.blur();
   const t = ev.target.closest('[data-kind]'), kind = t ? t.dataset.kind : 'bg', p = toModel(ev);
@@ -1853,10 +1878,11 @@ document.addEventListener('keydown', ev => {
 });
 
 /* ================= zoom ================= */
-function setZoom(z) { zoom = Math.min(2.5, Math.max(0.25, z)); renderCanvas(); }
+function setZoom(z) { zoom = Math.min(2.5, Math.max(0.25, z)); if (D) renderCanvas(); }
 $('#bZoomIn').onclick = () => setZoom(zoom * 1.2);
 $('#bZoomOut').onclick = () => setZoom(zoom / 1.2);
 function fit() {
+  if (!D) return;
   const w = $('#canvasWrap'), b = contentBounds(D);
   setZoom(Math.min((w.clientWidth - 20) / (b.x2 + M * 2 + 40), (w.clientHeight - 20) / (b.y2 + topOff() + M + 40), 1.4));
   w.scrollLeft = 0; w.scrollTop = 0;

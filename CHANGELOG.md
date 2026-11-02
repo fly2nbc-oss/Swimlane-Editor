@@ -22,6 +22,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ### Fixed
 
+- Deleting the last diagram leaves an empty page instead of creating a new "New process"; it stays empty after a reload. The example diagram appears only on the very first start.
 - A connection that leaves an element at the top or bottom (e.g. a decision) while its target lies beside it runs out of that side first instead of turning right at the corner or back through the element.
 - Branches of a decision leave from different corners: when two branches set to Auto would share a corner, the straightest keeps it and the other uses a free one (e.g. Yes from the top, No to the right).
 - A moved middle segment keeps a short distance to the elements instead of running along their edge.
