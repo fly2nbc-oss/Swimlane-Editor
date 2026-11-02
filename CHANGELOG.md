@@ -11,6 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ### Added
 
+- **PDF of a whole file**: when a file holds several diagrams, the PDF export puts all of them into one PDF (named after the file), each with its own header; page numbers run through. **All diagrams → PDF** in the Export menu does the same for every diagram in the editor.
 - **App icon**: in the browser tab and in the toolbar; also `docs/icon.svg`.
 - **`C` connects the selection**: select elements with `Shift` + click in flow order and press `C`; they are connected first to second (to third …).
 - **Connect by clicking**: click a blue dot, scroll if needed, then click the other element – no dragging across a long diagram. A dashed line follows the mouse; `Esc` or a click on an empty spot cancels.

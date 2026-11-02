@@ -17,7 +17,7 @@ Swimlane Editor shows who does what, in which order: roles as lanes, steps and d
 - **Lanes, phases and elements** – Start, Task, Decision, End, Subprocess, Wait/Event, Document, System/Data, Note; connections for sequence flow, messages and associations.
 - **Arrange automatically** (`L`) – puts the steps in order and keeps lanes and phases.
 - **draw.io as the file format** – edit a diagram in draw.io and open it here again.
-- **PDF** – A4 landscape with logo, title, version and owner; on one page or split across several at readable size.
+- **PDF** – A4 landscape with logo, title, version and owner; on one page or split across several at readable size. A file with several diagrams becomes one PDF; the Export menu also makes one PDF of all diagrams.
 - **Diagrams with AI** – an AI writes the steps as JSON, the editor lays them out ([`docs/AI-DIAGRAMS.md`](docs/AI-DIAGRAMS.md)).
 - **Keyboard first** – undo/redo, copy/paste, multi-select, align; `H` lists every key.
 

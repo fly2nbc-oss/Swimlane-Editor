@@ -138,12 +138,15 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
       <div class="items">
         <div class="grp">draw.io file</div>
         <button data-exp="saveas">Save as new file&hellip; (Ctrl+Shift+S)</button>
+        <div class="grp">PDF of this file (all its diagrams)</div>
+        <button data-exp="pdf">PDF, each diagram on one page (A4 landscape)</button>
+        <button data-exp="pdf-multi">PDF, multiple pages at readable size (A4 landscape)</button>
         <div class="grp">Current diagram</div>
-        <button data-exp="pdf">PDF, fit on one page (A4 landscape)</button>
-        <button data-exp="pdf-multi">PDF, multiple pages (A4 landscape)</button>
         <button data-exp="svg">SVG image</button>
         <button data-exp="json">JSON backup (this diagram)</button>
         <div class="grp">All diagrams</div>
+        <button data-exp="pdf-all">PDF, each diagram on one page</button>
+        <button data-exp="pdf-all-multi">PDF, multiple pages at readable size</button>
         <button data-exp="drawio-all">draw.io (one page per diagram)</button>
         <button data-exp="json-all">JSON backup (everything)</button>
       </div>
@@ -2162,44 +2165,54 @@ function phaseLabelsFor(d, a, b) {
   });
   return s;
 }
-async function exportPDF(d, multi) {
+// layout of one diagram in the PDF: one page, or segments at readable size (lane headers repeated)
+function pdfLayout(d, multi) {
+  const { jsPDF } = window.jspdf;
+  const b = contentBounds(d), pad = 12, y1 = b.y1 - pad, h = b.y2 - b.y1 + 2 * pad;
+  const area = pdfFrame(new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }), d, 1, 1); // drawing area, same on every page of d
+  const fullW = b.x2 - b.x1 + 2 * pad, READABLE = 0.30; // mm per model px, about 80 % of screen size
+  if (!multi || Math.min(area.w / fullW, area.h / h) >= Math.min(READABLE, area.h / h) - 1e-6) return { d, h, one: true, pages: 1 };
+  const scale = Math.min(READABLE, area.h / h), left = Math.min(b.x1, 0) - pad, headW = CX - left; // header column
+  const segs = pageSegments(d, poolW(d) + 2, area.w / scale - headW - 4);
+  return { d, h, y1, scale, left, headW, segs, pages: segs.length };
+}
+// all diagrams of one file go into one PDF; page numbers run through
+async function exportPDF(list, multi, fname) {
   if (!window.jspdf || !window.svg2pdf) { toast('PDF library not loaded'); return; }
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-  doc.setProperties({ title: d.title, subject: 'Process diagram', author: d.owner || store.settings.company || '', creator: `Swimlane Editor ${APP_VERSION}` });
-  const b = contentBounds(d), pad = 12;
-  const y1 = b.y1 - pad, h = b.y2 - b.y1 + 2 * pad;
-  // probe the drawing area size (same on every page)
-  const probe = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }), area = pdfFrame(probe, d, 1, 1);
-  const fullW = b.x2 - b.x1 + 2 * pad;
-  const READABLE = 0.30; // mm per model px, about 80 % of screen size
-  if (!multi || Math.min(area.w / fullW, area.h / h) >= Math.min(READABLE, area.h / h) - 1e-6) {
-    const ar = pdfFrame(doc, d, 1, 1), { svg: str, w } = exportSVGString(d);
-    const scale = Math.min(ar.w / w, ar.h / h, 0.36), dw = w * scale, dh = h * scale;
-    await svgToPdf(doc, str, ar.x + (ar.w - dw) / 2, ar.y, dw, dh);
-    if (scale < 0.2) toast(multi ? 'Diagram is very tall: text may be small.' : 'Large diagram: text may be small. Try "PDF, multiple pages".');
-    doc.save(fileName(d.title) + '.pdf'); return;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }), first = list[0];
+  const name = fname || (list.length > 1 ? (first.fileName || first.fileSource || first.title).replace(/\.drawio$/i, '') : first.title);
+  doc.setProperties({ title: name, subject: list.length > 1 ? 'Process diagrams' : 'Process diagram', author: first.owner || store.settings.company || '', creator: `Swimlane Editor ${APP_VERSION}` });
+  const plans = list.map(d => pdfLayout(d, multi)), total = plans.reduce((s, p) => s + p.pages, 0);
+  let page = 0, small = false;
+  for (const L of plans) {
+    const d = L.d, h = L.h, base = page;
+    if (L.one) {
+      if (page++) doc.addPage('a4', 'landscape');
+      const ar = pdfFrame(doc, d, page, total), { svg: str, w } = exportSVGString(d);
+      const scale = Math.min(ar.w / w, ar.h / h, 0.36), dw = w * scale, dh = h * scale;
+      await svgToPdf(doc, str, ar.x + (ar.w - dw) / 2, ar.y, dw, dh);
+      if (scale < 0.2) small = true;
+      continue;
+    }
+    const { y1, scale, left, headW, segs } = L, markup = diagramMarkup(d, { interactive: false });
+    for (let i = 0; i < segs.length; i++) {
+      if (page++) doc.addPage('a4', 'landscape');
+      const ar = pdfFrame(doc, d, page, total), [a, bb] = segs[i], cw = bb - a, W = headW + cw + 4;
+      const str = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${h}" viewBox="${left} ${y1} ${W} ${h}">` +
+        `<defs><clipPath id="cc"><rect x="${CX}" y="${y1}" width="${cw + 4}" height="${h}"/></clipPath><clipPath id="cl"><rect x="${left}" y="${y1}" width="${headW}" height="${h}"/></clipPath></defs>` +
+        `<g clip-path="url(#cc)"><g transform="translate(${CX - a},0)">${markup}${phaseLabelsFor(d, a, bb)}</g></g>` +
+        `<g clip-path="url(#cl)">${markup}</g></svg>`;
+      await svgToPdf(doc, str, ar.x, ar.y, W * scale, h * scale);
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(120, 128, 138);
+      const ty = ar.y + h * scale + 4;
+      if (i > 0) doc.text('<- continued from page ' + (base + i), ar.x + headW * scale, ty);
+      if (i < segs.length - 1) doc.text('continued on page ' + (base + i + 2) + ' ->', ar.x + W * scale, ty, { align: 'right' });
+    }
   }
-  // multi page: fixed scale, lane headers repeated on every page
-  const scale = Math.min(READABLE, area.h / h);
-  const left = Math.min(b.x1, 0) - pad;          // header column starts here
-  const headW = CX - left;                         // width of the repeated header column
-  const segW = area.w / scale - headW - 4;
-  const segs = pageSegments(d, poolW(d) + 2, segW), markup = diagramMarkup(d, { interactive: false });
-  for (let i = 0; i < segs.length; i++) {
-    if (i) doc.addPage('a4', 'landscape');
-    const ar = pdfFrame(doc, d, i + 1, segs.length), [a, bb] = segs[i], cw = bb - a, W = headW + cw + 4;
-    const str = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${h}" viewBox="${left} ${y1} ${W} ${h}">` +
-      `<defs><clipPath id="cc"><rect x="${CX}" y="${y1}" width="${cw + 4}" height="${h}"/></clipPath><clipPath id="cl"><rect x="${left}" y="${y1}" width="${headW}" height="${h}"/></clipPath></defs>` +
-      `<g clip-path="url(#cc)"><g transform="translate(${CX - a},0)">${markup}${phaseLabelsFor(d, a, bb)}</g></g>` +
-      `<g clip-path="url(#cl)">${markup}</g></svg>`;
-    await svgToPdf(doc, str, ar.x, ar.y, W * scale, h * scale);
-    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(120, 128, 138);
-    const ty = ar.y + h * scale + 4;
-    if (i > 0) doc.text('<- continued from page ' + i, ar.x + headW * scale, ty);
-    if (i < segs.length - 1) doc.text('continued on page ' + (i + 2) + ' ->', ar.x + W * scale, ty, { align: 'right' });
-  }
-  doc.save(fileName(d.title) + '.pdf');
+  if (small) toast(multi ? 'Diagram is very tall: text may be small.' : 'Large diagram: text may be small. Try "PDF, multiple pages".');
+  else if (list.length > 1) toast(`PDF with ${list.length} diagrams created`);
+  doc.save(fileName(name) + '.pdf');
 }
 
 $('#bExport').onclick = ev => { ev.stopPropagation(); $('#exportMenu').classList.toggle('open'); };
@@ -2209,7 +2222,8 @@ $('#exportMenu .items').addEventListener('click', async ev => {
   $('#exportMenu').classList.remove('open'); commitEditor();
   const k = b.dataset.exp, base = fileName(D.title);
   try {
-    if (k === 'pdf' || k === 'pdf-multi') { toast('Creating PDF…'); await exportPDF(D, k === 'pdf-multi'); }
+    if (k === 'pdf' || k === 'pdf-multi') { toast('Creating PDF…'); await exportPDF(groupOf(D), k === 'pdf-multi'); }
+    else if (k === 'pdf-all' || k === 'pdf-all-multi') { toast('Creating PDF…'); await exportPDF(store.diagrams, k === 'pdf-all-multi', 'all_diagrams_' + today()); }
     else if (k === 'saveas') await saveFile(true);
     else if (k === 'drawio-all') download('all_diagrams_' + today() + '.drawio', drawioFile(store.diagrams), 'application/xml');
     else if (k === 'svg') download(base + '.svg', exportSVGString(D).svg, 'image/svg+xml');
