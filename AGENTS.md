@@ -57,7 +57,7 @@ Then open `swimlane-editor.html` in Chrome or Edge. Commit `src/app.html` and `s
 ## Main parts of src/app.html (search for the `/* ===` comments)
 
 - **store**: `localStorage` key `swimlane-editor.v1` = working copy of all diagrams plus settings (logo, company, sidebar state).
-- **geometry**: lanes, phases, `buildRoute()` / `routeInfo()` / `route()` = orthogonal edge routing; `routePlan()` (cached) moves lines off elements and spreads overlapping middle segments; `autoSides()`.
+- **geometry**: lanes, phases, `buildRoute()` / `routeInfo()` / `route()` = orthogonal edge routing; `routePlan()` (cached) moves lines off elements and spreads overlapping middle segments; `autoSides()`. Notes: `fitNote()` keeps the height at the text (`noteHeight()`) and grows the lane, called by `harden()` and `changed()`.
 - **rendering**: `diagramMarkup(d, {interactive})` builds SVG as a string, used for canvas, SVG export and PDF alike.
 - **canvas interaction**: pointer events with drag modes (`move`, `resize`, `connect`, `lane`, `phase`, `poolw`, `box`, `bend`); own double-click detection because the SVG is re-rendered between clicks.
 - **right panel**: `renderPanel()` per selection (edge, single node, multi, diagram).

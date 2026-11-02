@@ -272,11 +272,12 @@ function wrap(text, maxW, size = 12, bold = false) {
   return out;
 }
 // text block; mode 'middle' centers vertically around y, 'top' starts at y
-// a note grows downwards with its text so the bracket encloses it; its lane grows with it (lanes below move down)
+// a note is as high as its text, so the bracket encloses it; the width is set by the user (resize handle) or by Arrange
+const noteHeight = n => Math.max(40, Math.ceil((wrap(n.text, n.w - 16, 11.5).length * 11.5 * 1.25 + 12) / GRID) * GRID);
+// the top stays; when the note grows out of its lane, the lane grows with it (lanes below move down)
 function fitNote(d, n) {
   if (n.type !== 'note' || !n.w) return;
-  const need = Math.ceil((wrap(n.text, n.w - 16, 11.5).length * 11.5 * 1.25 + 12) / GRID) * GRID;
-  if (need <= n.h) return;
+  const need = noteHeight(n);
   const tops = laneTops(d), cy = n.y + n.h / 2;
   const i = d.lanes.findIndex((l, k) => cy >= tops[k] && cy < tops[k] + l.height);
   n.h = need;
@@ -423,6 +424,12 @@ function edgeSides(d, e) {
 function buildRoute(d, e, sa, sb, k) {
   const a = nodeById(d, e.from), b = nodeById(d, e.to);
   const p1 = sidePoint(a, sa), p2 = sidePoint(b, sb), S = 18;
+  // a note is met straight across from the other element when that is on its bracket (a wide note's centre is often not under its step)
+  const meet = (pn, n, side, po) => {
+    const c = side === 'top' || side === 'bottom' ? 'x' : 'y', lo = c === 'x' ? n.x + 16 : n.y + 8, hi = c === 'x' ? n.x + n.w - 10 : n.y + n.h - 8;
+    if (po[c] >= lo && po[c] <= hi) pn[c] = po[c];
+  };
+  if (b.type === 'note' && a.type !== 'note') meet(p2, b, sb, p1); else if (a.type === 'note' && b.type !== 'note') meet(p1, a, sa, p2);
   const d1 = DIR[sa], d2 = DIR[sb];
   const s = { x: p1.x + d1[0] * S, y: p1.y + d1[1] * S }, t = { x: p2.x + d2[0] * S, y: p2.y + d2[1] * S };
   const h1 = d1[0] !== 0, h2 = d2[0] !== 0;
@@ -916,7 +923,7 @@ function onMove(ev) {
     const n = nodeById(D, drag.id);
     let w = Math.max(30, Math.round((drag.orig.w + p.x - drag.start.x) / GRID) * GRID), h = Math.max(30, Math.round((drag.orig.h + p.y - drag.start.y) / GRID) * GRID);
     if (ROUND.has(n.type)) w = h = Math.max(w, h);
-    n.w = w; n.h = h;
+    n.w = w; n.h = n.type === 'note' ? noteHeight({ ...n, w }) : h;
   } else if (drag.mode === 'bend') {
     const e = D.edges.find(x => x.id === drag.id), delta = drag.axis === 'x' ? p.x - drag.start.x : p.y - drag.start.y;
     if (!e || (!drag.moved && Math.abs(delta) < 3)) return;
@@ -1384,8 +1391,14 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
     const cy = rows[li] === 1 ? tops[li] + d.lanes[li].height / 2 : tops[li] + 15 + row.get(n.id) * ROW_H + ROW_H / 2;
     n.x = cx - n.w / 2; n.y = cy - n.h / 2;
   }
+  // notes fill their cell and reach into the next one when it is free in their row (not across a phase border, see 7.);
+  // the top stays, a note grows downwards with its text
+  for (const n of nodes) if (n.type === 'note' && isArtifact(n.id)) {
+    const c = col.get(n.id), wide = !occ.has((c + 1) + '|' + lane.get(n.id) + '|' + row.get(n.id));
+    n.x = COL0 + c * COL_W - COL_W / 2 + 10; n.w = wide ? COL_W + 90 : COL_W - 20; n.h = noteHeight(n);
+  }
   const maxCol = Math.max(0, ...nodes.map(n => col.get(n.id)));
-  d.width = Math.max(600, COL0 + maxCol * COL_W + COL_W / 2 - CX);
+  d.width = Math.max(600, COL0 + maxCol * COL_W + COL_W / 2 - CX, ...nodes.map(n => n.x + n.w + 20 - CX));
   // 7. phase widths follow their columns
   if (P) {
     let left = CX, prevEnd = -1;
@@ -1395,6 +1408,12 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
       const right = COL0 + end * COL_W + COL_W / 2;
       p.width = Math.max(80, right - left); left = right; prevEnd = end;
     });
+    // a wide note ends before the border of its phase
+    const borders = []; let bx = CX; d.phases.forEach(p => { bx += p.width; borders.push(bx); });
+    for (const n of nodes) if (n.type === 'note' && n.w > COL_W - 20) {
+      const end = borders.find(x => x > n.x + COL_W / 2);
+      if (end !== undefined && n.x + n.w > end - 10) { n.w = Math.max(COL_W - 20, Math.floor((end - 10 - n.x) / GRID) * GRID); n.h = noteHeight(n); }
+    }
   }
   // 8. line routing hints: decision branches leave on different sides, loops go around
   const level = id => lane.get(id) * 100 + row.get(id);

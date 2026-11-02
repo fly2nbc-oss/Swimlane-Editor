@@ -22,7 +22,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ### Fixed
 
-- A note grows downwards with its text, so the bracket encloses the whole text; its lane grows with it if needed (on opening a file and after each edit).
+- **Notes fit their text**: a note is as high as its text, so the bracket encloses all of it; drag the handle at the bottom right to make it wider (it gets lower). Its lane grows with it if needed. Arrange and JSON import without coordinates make a note wider when the room to its right is free (up to the phase border). The dotted line meets a wide note straight below its step.
 - Deleting the last diagram leaves an empty page instead of creating a new "New process"; it stays empty after a reload. The example diagram appears only on the very first start.
 - A connection that leaves an element at the top or bottom (e.g. a decision) while its target lies beside it runs out of that side first instead of turning right at the corner or back through the element.
 - Branches of a decision leave from different corners: when two branches set to Auto would share a corner, the straightest keeps it and the other uses a free one (e.g. Yes from the top, No to the right).
