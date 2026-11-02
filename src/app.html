@@ -38,16 +38,28 @@ header{grid-column:1/-1;display:flex;align-items:center;gap:4px;padding:0 10px;b
 header .brand{font-weight:700;margin-right:14px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
 header .sep{width:1px;height:24px;background:var(--border);margin:0 6px}
 header .spacer{flex:1}
+svg.i{width:16px;height:16px;display:block}
+.listbar{align-items:center}
+.listbar .sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+button.icon:has(svg.i){display:inline-flex;align-items:center;justify-content:center;padding:5px 7px}
+.split{display:inline-flex}
+.split>button:first-child{border-top-right-radius:0;border-bottom-right-radius:0}
+.split>.menu>button{border-top-left-radius:0;border-bottom-left-radius:0;border-left-color:rgba(255,255,255,.35);padding:5px 6px}
+.menu .items.left{right:auto;left:0}
 #saveState{color:var(--muted);font-size:12px;margin-right:8px;white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
 #saveState.dirty{color:#a15c00}
-#diagramList li .dot{color:#d38200}
 button,.btn{font:inherit;border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:6px;padding:5px 10px;cursor:pointer;white-space:nowrap}
 button:hover,.btn:hover{background:var(--hover)}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button.primary:hover{filter:brightness(1.08)}
 button.danger{color:var(--danger)}
+button.primary.danger{background:var(--danger);border-color:var(--danger);color:#fff}
 button.icon{padding:5px 8px;min-width:32px}
 button:disabled{opacity:.45;cursor:default}
+button:disabled:hover{background:var(--panel)}
+button.primary:disabled:hover{background:var(--accent);filter:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline-offset:0}
 #zoomLabel{min-width:48px;text-align:center;color:var(--muted)}
 aside{background:var(--panel);overflow:auto;padding:12px}
 aside.left{border-right:1px solid var(--border)}
@@ -59,6 +71,18 @@ h3:first-child{margin-top:0}
 #diagramList li:hover{background:var(--hover)}
 #diagramList li.active{background:var(--accent-weak);color:var(--accent);font-weight:600}
 #diagramList li small{color:var(--muted);font-weight:400;font-size:11px}
+#diagramList li.page{padding-left:22px;flex-direction:row;align-items:baseline;justify-content:space-between;gap:6px}
+#diagramList li.page span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#diagramList li.file{flex-direction:row;align-items:center;gap:6px;padding:8px 4px 3px 8px;font-size:12px;font-weight:600;color:var(--text)}
+#diagramList li.file:first-child{padding-top:2px}
+#diagramList li.file:hover{background:none}
+#diagramList li.file .fname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#diagramList li.file svg{flex:none;color:var(--muted)}
+#diagramList li.file .fstate{font-weight:400;font-size:11px;color:var(--muted);white-space:nowrap}
+#diagramList li.file .fstate.dirty{color:#a15c00}
+#diagramList li.file.loose{color:var(--muted);cursor:default}
+#diagramList li.file .fclose{border:0;background:none;padding:0 5px;color:var(--muted);font-size:14px;line-height:1}
+#diagramList li.file .fclose:hover{color:var(--danger);background:var(--hover)}
 .row{display:flex;gap:6px;flex-wrap:wrap}
 .row.icons{gap:3px}
 .ibtn{padding:3px 4px;line-height:0;display:inline-flex;align-items:center;justify-content:center}
@@ -69,7 +93,10 @@ h3:first-child{margin-top:0}
 .tile svg{width:44px;height:30px}
 .hint{color:var(--muted);font-size:12px;margin:8px 0}
 #canvasWrap{overflow:auto;position:relative;background:var(--bg)}
-#emptyState{display:none;position:absolute;inset:0;align-items:center;justify-content:center;color:var(--muted,#667);font-size:15px}
+#emptyState{display:none;position:absolute;inset:0;flex-direction:column;gap:14px;align-items:center;justify-content:center;color:var(--muted);font-size:15px}
+#emptyState .row{justify-content:center}
+#emptyState small{font-size:12px}
+#canvasWrap.dropping{outline:3px dashed var(--accent);outline-offset:-8px}
 body.nodiagram #emptyState{display:flex}
 body.nodiagram #palette{opacity:.45;pointer-events:none}
 #stage{position:relative;display:inline-block;margin:0}
@@ -88,18 +115,23 @@ body.nodiagram #palette{opacity:.45;pointer-events:none}
 #canvas .lanehdr,#canvas .poolhdr,#canvas .phasehdr{cursor:text}
 #canvas .phasesplit{cursor:ew-resize}
 #canvas .phasesplit:hover{fill:rgba(10,94,168,.35)}
-.inlineEdit{position:absolute;z-index:5;border:2px solid var(--accent);border-radius:6px;padding:4px;font-family:Helvetica,Arial,sans-serif;text-align:center;resize:none;outline:none;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+.inlineEdit{position:absolute;z-index:5;border:2px solid var(--accent);border-radius:8px;padding:4px 6px;color:#1f2933;text-align:center;resize:none;outline:none;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.15);overflow:auto}
+.inlineEdit:focus{outline:none}
+textarea.inlineEdit{min-height:0}
 label.f{display:block;margin:8px 0 3px;color:var(--muted);font-size:12px}
 input[type=text],textarea,select{width:100%;font:inherit;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:#fff;color:var(--text)}
 textarea{min-height:64px;resize:vertical}
-input:focus,textarea:focus,select:focus{outline:2px solid var(--accent-weak);border-color:var(--accent)}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
 .lane-row{display:flex;gap:4px;align-items:center;margin-bottom:6px}
 .lane-row input{flex:1;min-width:0}
-.lane-row button{padding:4px 7px}
+.lane-row button{padding:4px 7px;min-width:28px}
+.lane-row button:disabled{visibility:hidden}
+.lane-row button.danger{color:var(--muted)}
+.lane-row button.danger:hover{color:var(--danger)}
 .swatches{display:flex;gap:6px;flex-wrap:wrap}
 .sw{width:24px;height:24px;border-radius:6px;border:1px solid var(--border);cursor:pointer;padding:0}
 .sw.on{outline:2px solid var(--accent);outline-offset:1px}
-.sw.none{background:linear-gradient(135deg,#fff 45%,#d33 45%,#d33 55%,#fff 55%)}
+.sw.none{background:#fff;border:1px dashed #8a94a0;color:var(--muted);font-size:10px;font-weight:600;line-height:22px}
 .menu{position:relative}
 .menu .items{display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:250px;padding:4px;z-index:20}
 .menu.open .items{display:block}
@@ -114,68 +146,93 @@ dialog::backdrop{background:rgba(15,23,32,.35)}
 details{margin-top:16px;color:var(--muted);font-size:12px}
 details summary{cursor:pointer}
 details ul{padding-left:16px;margin:6px 0}
+details.tips{margin-top:12px}
+details.tips summary{font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+#confirmDlg p{margin:0 0 4px;white-space:pre-line}
+@media (max-width:1250px){#saveState{display:none}}
+@media (max-width:1100px){
+  #app{grid-template-columns:200px 1fr 240px}
+  #app.hide-left{grid-template-columns:0 1fr 240px}
+  #app.hide-right{grid-template-columns:200px 1fr 0}
+  header .brand .name{display:none}
+}
+@media (max-width:900px){header .sep,#zoomLabel{display:none} header{gap:3px;padding:0 6px}}
+@media (prefers-reduced-motion:reduce){#app,#toast,#canvas .port{transition:none}}
 kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:0 4px;font-size:11px}
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <button class="toggle on" id="bLeft" title="Show or hide the left sidebar (F10 or Alt+1)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><rect x="2.5" y="3.5" width="5" height="13" rx="1" fill="currentColor" fill-opacity=".35"/></svg></button>
-    <span class="brand" style="margin-left:6px"><svg class="appicon" viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0a5ea8"/><rect x="4" y="6" width="24" height="20" rx="2" fill="#ffffff"/><rect x="4" y="6" width="4.5" height="20" rx="2" fill="#bcd4ec"/><path d="M8.5 16H28" stroke="#0a5ea8" stroke-width="1"/><rect x="10.5" y="8.5" width="7" height="5" rx="1.2" fill="#0a5ea8"/><rect x="18.5" y="18.5" width="7" height="5" rx="1.2" fill="#e39b2d"/><path d="M17.5 11H22V16.2" fill="none" stroke="#0a5ea8" stroke-width="1.4"/><path d="M19.9 15.8L22 18.5L24.1 15.8Z" fill="#0a5ea8"/></svg>Swimlane Editor</span>
-    <button class="icon" id="bUndo" title="Undo (Ctrl+Z)">&#8630;</button>
-    <button class="icon" id="bRedo" title="Redo (Ctrl+Y)">&#8631;</button>
-    <span class="sep"></span>
-    <button class="icon" id="bZoomOut" title="Zoom out">&#8722;</button>
-    <span id="zoomLabel">100%</span>
-    <button class="icon" id="bZoomIn" title="Zoom in">+</button>
-    <button id="bFit" title="Fit to window (Ctrl+0)">Fit</button>
-    <button id="bArrange" title="Arrange all elements automatically (L)">Arrange</button>
-    <span class="sep"></span>
-    <button id="bDelete" class="danger" title="Delete selection (Del)">Delete</button>
-    <span class="spacer"></span>
-    <span id="saveState"></span>
+    <button class="toggle on" id="bLeft" title="Show or hide the left sidebar (Alt+1 or F10)" aria-label="Left sidebar"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><rect x="2.5" y="3.5" width="5" height="13" rx="1" fill="currentColor" fill-opacity=".35"/></svg></button>
+    <span class="brand" style="margin-left:6px"><svg class="appicon" viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0a5ea8"/><rect x="4" y="6" width="24" height="20" rx="2" fill="#ffffff"/><rect x="4" y="6" width="4.5" height="20" rx="2" fill="#bcd4ec"/><path d="M8.5 16H28" stroke="#0a5ea8" stroke-width="1"/><rect x="10.5" y="8.5" width="7" height="5" rx="1.2" fill="#0a5ea8"/><rect x="18.5" y="18.5" width="7" height="5" rx="1.2" fill="#e39b2d"/><path d="M17.5 11H22V16.2" fill="none" stroke="#0a5ea8" stroke-width="1.4"/><path d="M19.9 15.8L22 18.5L24.1 15.8Z" fill="#0a5ea8"/></svg><span class="name">Swimlane Editor</span></span>
     <button id="bOpen" title="Open a .drawio or .json file (Ctrl+O)">Open&hellip;</button>
-    <button id="bSave" class="primary" title="Save as .drawio file (Ctrl+S)">Save</button>
-    <div class="menu" id="exportMenu">
-      <button id="bExport">Export &#9662;</button>
-      <div class="items">
-        <div class="grp">draw.io file</div>
-        <button data-exp="saveas">Save as new file&hellip; (Ctrl+Shift+S)</button>
-        <div class="grp">PDF of this file (all its diagrams)</div>
-        <button data-exp="pdf">PDF, each diagram on one page (A4 landscape)</button>
-        <button data-exp="pdf-multi">PDF, multiple pages at readable size (A4 landscape)</button>
-        <div class="grp">Current diagram</div>
-        <button data-exp="svg">SVG image</button>
-        <button data-exp="json">JSON backup (this diagram)</button>
-        <div class="grp">All diagrams</div>
-        <button data-exp="pdf-all">PDF, each diagram on one page</button>
-        <button data-exp="pdf-all-multi">PDF, multiple pages at readable size</button>
-        <button data-exp="drawio-all">draw.io (one page per diagram)</button>
-        <button data-exp="json-all">JSON backup (everything)</button>
+    <div class="split">
+      <button id="bSave" class="primary" title="Save as .drawio file (Ctrl+S)">Save</button>
+      <div class="menu" id="saveMenu">
+        <button id="bSaveMenu" class="primary" title="More save options" aria-label="More save options" aria-haspopup="menu">&#9662;</button>
+        <div class="items left" role="menu">
+          <button data-exp="saveas">Save as new file&hellip; (Ctrl+Shift+S)</button>
+        </div>
       </div>
     </div>
-    <button id="bHelp" class="icon" title="Keyboard shortcuts (H)">?</button>
-    <button id="bSettings" title="Settings">Settings</button>
-    <button class="toggle on" id="bRight" title="Show or hide the right sidebar (Tab or Alt+2)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><rect x="12.5" y="3.5" width="5" height="13" rx="1" fill="currentColor" fill-opacity=".35"/></svg></button>
+    <div class="menu" id="exportMenu">
+      <button id="bExport" title="PDF, SVG, draw.io and JSON" aria-haspopup="menu">Export &#9662;</button>
+      <div class="items left" role="menu">
+        <div class="grp" id="expFileGrp">This file</div>
+        <button data-exp="pdf">PDF &ndash; each diagram on one page</button>
+        <button data-exp="pdf-multi">PDF &ndash; several pages, readable size</button>
+        <div class="grp" id="expDiagramGrp">Only this diagram</div>
+        <button data-exp="svg">SVG image</button>
+        <div class="grp" id="expAllGrp">All diagrams</div>
+        <button data-exp="pdf-all">PDF &ndash; each diagram on one page</button>
+        <button data-exp="pdf-all-multi">PDF &ndash; several pages, readable size</button>
+        <button data-exp="json-all">JSON backup</button>
+      </div>
+    </div>
+    <span class="sep"></span>
+    <button class="icon" id="bUndo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5L2.5 6.5L5.5 9.5"/><path d="M2.5 6.5H10a3.5 3.5 0 0 1 0 7H7"/></svg></button>
+    <button class="icon" id="bRedo" title="Redo (Ctrl+Y)" aria-label="Redo"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 3.5L13.5 6.5L10.5 9.5"/><path d="M13.5 6.5H6a3.5 3.5 0 0 0 0 7H9"/></svg></button>
+    <span class="sep"></span>
+    <button class="icon" id="bZoomOut" title="Zoom out (&minus;)" aria-label="Zoom out">&#8722;</button>
+    <span id="zoomLabel">100%</span>
+    <button class="icon" id="bZoomIn" title="Zoom in (+)" aria-label="Zoom in">+</button>
+    <button id="bFit" title="Fit to window (Ctrl+0)">Fit</button>
+    <button id="bArrange" title="Arrange all elements automatically (L)">Arrange</button>
+    <span class="spacer"></span>
+    <span id="saveState"></span>
+    <button id="bHelp" class="icon" title="Keyboard shortcuts (H)" aria-label="Keyboard shortcuts"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.75c-.5.2-.8.6-.8 1.1v.4"/><circle cx="8" cy="11.6" r=".5" fill="currentColor"/></svg></button>
+    <button id="bSettings" class="icon" title="Settings: company name and logo for the PDF" aria-label="Settings"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h7M13 4h1M2 8h2M8 8h6M2 12h8M14 12h0"/><circle cx="11" cy="4" r="1.8"/><circle cx="6" cy="8" r="1.8"/><circle cx="12" cy="12" r="1.8"/></svg></button>
+    <button class="toggle on" id="bRight" title="Show or hide the right sidebar (Alt+2)" aria-label="Right sidebar"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><rect x="12.5" y="3.5" width="5" height="13" rx="1" fill="currentColor" fill-opacity=".35"/></svg></button>
   </header>
 
   <aside class="left">
-    <h3>Diagrams</h3>
+    <h3>Files and diagrams</h3>
     <ul id="diagramList"></ul>
-    <div class="row">
-      <button id="bNew">+ New</button>
-      <button id="bDup">Duplicate</button>
-      <button id="bDel" class="danger">Delete</button>
+    <div class="row icons listbar">
+      <button class="icon" id="bNew" title="New diagram, saved as its own file" aria-label="New diagram"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M9.5 1.5h-6v13h9v-10z"/><path d="M9.5 1.5v3h3"/><path d="M8 7.5v5M5.5 10h5"/></svg></button>
+      <button class="icon" id="bNewPage" title="New page in the current file: a new diagram saved with it" aria-label="New page in this file"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M4.5 3.5V1.5h8v10h-2"/><path d="M2.5 4.5h8v10h-8z"/><path d="M6.5 7v5M4 9.5h5"/></svg></button>
+      <button class="icon" id="bDup" title="Duplicate this diagram, saved as its own file" aria-label="Duplicate diagram"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="5.5" y="5.5" width="9" height="9" rx="1.5"/><path d="M10.5 3V2.5a1 1 0 0 0-1-1h-7a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1H3"/></svg></button>
+      <span class="sep"></span>
+      <button class="icon danger" id="bDel" title="Delete this diagram (it leaves its file on the next save)" aria-label="Delete diagram"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 10h6.6L12 4"/><path d="M6.7 6.8v4.6M9.3 6.8v4.6"/></svg></button>
+      <button class="icon danger" id="bDelAll" title="Delete all: remove every file and diagram from the editor" aria-label="Delete all"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M6.5 2.5h8M9 2.5V1.3h3v1.2M13.3 2.5l-.6 8.5h-1.4"/><path d="M1.5 6h8.5M4.3 6V4.7h3V6M2.8 6l.6 8.5h4.9L9 6"/></svg></button>
     </div>
     <h3>Elements</h3>
     <div id="palette"></div>
-    <p class="hint">Drag an element onto a lane. Or select an element and click a tile: the new element is placed to the right and connected.</p>
-    <p class="hint">Connect: hover an element and drag from a blue dot to another element. Drop on empty space to create a new task. Or click a blue dot, scroll if needed, then click the other element. Or select two elements with Shift + click and press C.</p>
+    <details class="tips" id="tips">
+      <summary>Tips</summary>
+      <p class="hint">Drag an element onto a lane. Or select an element and click a tile: the new element is placed to the right and connected.</p>
+      <p class="hint">Connect: hover an element and drag from a blue dot to another element. Drop on empty space to create a new task. Or click a blue dot, scroll if needed, then click the other element. Or select two elements with Shift + click and press C.</p>
+    </details>
   </aside>
 
   <main id="canvasWrap">
     <div id="stage"><svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg></div>
-    <div id="emptyState"><span>No diagram. Click <b>+ New</b> on the left or <b>Open…</b> at the top.</span></div>
+    <div id="emptyState">
+      <span>No diagram yet.</span>
+      <div class="row"><button class="primary" id="bEmptyNew">+ New diagram</button><button id="bEmptyOpen">Open file&hellip;</button></div>
+      <small>Or drop a .drawio or .json file here.</small>
+    </div>
   </main>
 
   <aside class="right" id="panel"></aside>
@@ -204,6 +261,15 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
   <h3 style="margin-top:0">Keyboard shortcuts</h3>
   <div class="body" id="helpBody"></div>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="primary" id="bHelpClose">Close</button></div>
+</dialog>
+
+<dialog id="confirmDlg">
+  <h3 style="margin-top:0" id="confirmTitle"></h3>
+  <p id="confirmText"></p>
+  <div class="row" style="justify-content:flex-end;margin-top:16px">
+    <button id="confirmCancel">Cancel</button>
+    <button class="primary" id="confirmOk">OK</button>
+  </div>
 </dialog>
 
 <div id="toast"></div>
@@ -243,7 +309,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.1.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.2.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -253,6 +319,22 @@ const today = () => new Date().toISOString().slice(0, 10);
 const fileName = s => (String(s || 'diagram').replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_').slice(0, 80) || 'diagram');
 let toastTimer;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600); }
+// styled replacement for confirm(): resolves true (OK button) or false (Cancel, Esc, backdrop)
+function ask(title, text, { ok = 'OK', cancel = 'Cancel', danger = false } = {}) {
+  const dlg = $('#confirmDlg');
+  $('#confirmTitle').textContent = title; $('#confirmText').textContent = text;
+  $('#confirmOk').textContent = ok; $('#confirmCancel').textContent = cancel;
+  $('#confirmOk').classList.toggle('danger', danger);
+  return new Promise(res => {
+    const done = v => { dlg.onclose = null; if (dlg.open) dlg.close(); res(v); };
+    $('#confirmOk').onclick = () => done(true);
+    $('#confirmCancel').onclick = () => done(false);
+    dlg.onclose = () => done(false);
+    dlg.showModal(); (danger ? $('#confirmCancel') : $('#confirmOk')).focus();
+  });
+}
+// while a question is open, app shortcuts stay off (Enter, Esc and Tab keep working in the dialog)
+document.addEventListener('keydown', ev => { if ($('#confirmDlg').open) ev.stopImmediatePropagation(); }, true);
 
 const mctx = document.createElement('canvas').getContext('2d');
 function measure(t, size, bold) { mctx.font = (bold ? 'bold ' : '') + size + 'px ' + FONT; return mctx.measureText(t).width; }
@@ -356,6 +438,7 @@ function save() {
 function renderSaveState() {
   const el = $('#saveState'); if (!D) return;
   const g = groupOf(D), page = g.length > 1 ? ` (page ${g.indexOf(D) + 1} of ${g.length})` : '', all = g.length > 1 ? ` with all ${g.length} pages` : '';
+  $('#bSave').title = `Save ${g.length > 1 ? `all ${g.length} diagrams of the file` : 'this diagram'} to ${groupFileName(g)} (Ctrl+S)`;
   if (!D.fileName) { el.textContent = 'Not saved to a file yet' + page; el.className = 'dirty'; el.title = `Only stored in this browser. Click Save to create a .drawio file${all}.`; }
   else if (g.some(x => x.fileDirty)) { el.textContent = '\u25CF Unsaved changes \u00B7 ' + D.fileName + page; el.className = 'dirty'; el.title = `Press Ctrl+S to save to ${D.fileName}${all}`; }
   else { el.textContent = '\u2713 ' + D.fileName + page; el.className = ''; el.title = 'Saved to ' + D.fileName; }
@@ -671,17 +754,25 @@ function arrowHead(a, b, filled) {
   return `<polygon points="${b.x},${b.y} ${bx - uy * half},${by + ux * half} ${bx + uy * half},${by - ux * half}" fill="${filled ? '#3A4450' : '#ffffff'}" stroke="#3A4450" stroke-width="1.3" stroke-linejoin="round"/>`;
 }
 function edgeSVG(d, e, { interactive, selected }) {
-  const { pts, axis } = routeInfo(d, e);
+  const { pts, axis, pos } = routeInfo(d, e);
   const dstr = 'M' + pts.map(p => `${p.x},${p.y}`).join(' L');
   const color = selected ? '#0a5ea8' : '#3A4450';
   const dash = e.type === 'message' ? ' stroke-dasharray="7 4"' : e.type === 'assoc' ? ' stroke-dasharray="2 3"' : '';
-  let s = `<path d="${dstr}" fill="none" stroke="${color}" stroke-width="${selected ? 2.2 : 1.5}"${dash} stroke-linejoin="round"/>`;
   const n = pts.length;
+  // selected (editor only): light halo under the line, dots at both ends, a handle on the movable middle segment
+  let s = selected ? `<path d="${dstr}" fill="none" stroke="#0a5ea8" stroke-opacity=".18" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>` : '';
+  s += `<path d="${dstr}" fill="none" stroke="${color}" stroke-width="${selected ? 2.2 : 1.5}"${dash} stroke-linejoin="round"/>`;
   if (e.type === 'flow') s += arrowHead(pts[n - 2], pts[n - 1], true);
   if (e.type === 'message') { s += arrowHead(pts[n - 2], pts[n - 1], false); s += `<circle cx="${pts[0].x}" cy="${pts[0].y}" r="3.5" fill="#fff" stroke="#3A4450" stroke-width="1.3"/>`; }
   if (e.label) {
     const p = labelPos(d, e, pts), lines = wrap(e.label, 120, 11), lw = Math.max(...lines.map(l => measure(l, 11))) + 8, lh = lines.length * 13.75 + 4;
     s += `<rect x="${p.x - lw / 2}" y="${p.y - lh / 2}" width="${lw}" height="${lh}" rx="3" fill="#ffffff" fill-opacity="0.92"/>` + textBlock(lines, p.x, p.y, { size: 11, color: '#2a333d' });
+  }
+  if (selected) {
+    const dot = p => `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#fff" stroke="#0a5ea8" stroke-width="1.8" pointer-events="none"/>`;
+    s += dot(pts[0]) + dot(pts[n - 1]);
+    const i = pts.findIndex((p, j) => j < n - 1 && Math.abs(p[axis] - pos) < 0.5 && Math.abs(pts[j + 1][axis] - pos) < 0.5);
+    if (i >= 0) { const m = { x: (pts[i].x + pts[i + 1].x) / 2, y: (pts[i].y + pts[i + 1].y) / 2 }; s +=`<rect x="${m.x - 4}" y="${m.y - 4}" width="8" height="8" rx="1.5" fill="#0a5ea8" stroke="#fff" stroke-width="1.2" pointer-events="none"/>`; }
   }
   if (interactive) s = `<g data-kind="edge" data-id="${esc(e.id)}" style="cursor:${axis === 'x' ? 'ew-resize' : 'ns-resize'}"><path class="edgehit" d="${dstr}" fill="none" stroke="#000" stroke-opacity="0" stroke-width="12"/>${s}</g>`;
   return s;
@@ -769,40 +860,108 @@ function renderCanvas() {
 }
 const boxRect = (a, b) => ({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) });
 // no diagram (all deleted): empty page; only New, Open, help, settings and the bars work
-const NEEDS_DIAGRAM = ['bUndo', 'bRedo', 'bZoomOut', 'bZoomIn', 'bFit', 'bArrange', 'bDelete', 'bSave', 'bExport', 'bDup', 'bDel'];
+const NEEDS_DIAGRAM = ['bUndo', 'bRedo', 'bZoomOut', 'bZoomIn', 'bFit', 'bArrange', 'bSave', 'bSaveMenu', 'bExport', 'bNewPage', 'bDup', 'bDel', 'bDelAll'];
 function renderAll() {
   document.body.classList.toggle('nodiagram', !D);
   for (const id of NEEDS_DIAGRAM) $('#' + id).disabled = !D;
   if (!D) {
     svg.innerHTML = ''; svg.setAttribute('width', 0); svg.setAttribute('height', 0);
     renderList(); $('#saveState').textContent = ''; $('#saveState').title = '';
-    panel.innerHTML = '<h3>No diagram</h3><p class="hint">Click New to start a diagram, or Open a <code>.drawio</code> or JSON file.</p>';
+    panel.innerHTML = '';
     return;
   }
   renderCanvas(); renderList(); renderPanel(); renderSaveState();
 }
 
 /* ================= left: list & palette ================= */
-function renderList() {
-  const ul = $('#diagramList');
-  ul.innerHTML = store.diagrams.map(d => `<li data-id="${esc(d.id)}" class="${D && d.id === D.id ? 'active' : ''}" title="${esc(d.fileName || 'Not saved to a file')}"><span>${(d.fileDirty || !d.fileName) ? '<span class="dot">\u25CF</span> ' : ''}${esc(d.title || 'Untitled')}</span><small>${esc(d.fileName || 'no file')} · v${esc(d.version || '')}</small></li>`).join('');
+// The list is grouped by file: every file (a group, see groupKey) with its diagrams as pages, then the
+// single diagrams that are not saved to a file yet. Save always writes the file of the current diagram.
+function listGroups() {
+  const groups = new Map();
+  for (const d of store.diagrams) { const k = groupKey(d); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(d); }
+  const files = [], loose = [];
+  for (const [key, ds] of groups) { if (ds.length === 1 && !ds[0].fileName) loose.push(ds[0]); else files.push({ key, ds }); }
+  return { files, loose };
 }
-$('#diagramList').addEventListener('click', ev => { const li = ev.target.closest('li'); if (li) switchTo(li.dataset.id); });
+const displayOrder = () => { const { files, loose } = listGroups(); return [...files.flatMap(f => f.ds), ...loose]; };
+// name of the file a group is (or will be) saved to
+const groupFileName = ds => ds.find(x => x.fileName)?.fileName || (ds.find(x => x.fileSource)?.fileSource || fileName(ds[0].title)) + '.drawio';
+const FILE_ICON = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 1.5h6l3 3v10h-9z"/><path d="M9.5 1.5v3h3"/></svg>';
+function renderList() {
+  const { files, loose } = listGroups();
+  const page = d => `<li class="page${D && d.id === D.id ? ' active' : ''}" tabindex="0" data-id="${esc(d.id)}" ${D && d.id === D.id ? 'aria-current="true"' : ''}><span>${esc(d.title || 'Untitled')}</span><small>v${esc(d.version || '')}</small></li>`;
+  let s = '';
+  for (const { key, ds } of files) {
+    const name = groupFileName(ds), saved = ds.some(x => x.fileName);
+    const [state, cls, tip] = !saved ? ['●', 'dirty', 'Not saved yet: Save creates ' + name] : ds.some(x => x.fileDirty) ? ['●', 'dirty', 'Unsaved changes: Save writes ' + name] : ['✓', '', 'Saved to ' + name];
+    s += `<li class="file" data-key="${esc(key)}" title="${esc(tip)}${ds.length > 1 ? ` (${ds.length} pages)` : ''}">${FILE_ICON}<span class="fname">${esc(name)}</span><span class="fstate ${cls}">${state}</span>` +
+      `<button class="fclose" data-close="${esc(key)}" title="Close ${esc(name)}: remove its diagrams from the editor (the file stays)" aria-label="Close ${esc(name)}">&times;</button></li>` + ds.map(page).join('');
+  }
+  if (loose.length) s += `<li class="file loose" title="Each of these is saved as its own file">Not saved to a file</li>` + loose.map(page).join('');
+  $('#diagramList').innerHTML = s;
+}
+$('#diagramList').addEventListener('click', ev => {
+  const c = ev.target.closest('[data-close]'); if (c) { ev.stopPropagation(); closeFile(c.dataset.close); return; }
+  const li = ev.target.closest('li[data-id]'); if (li) { switchTo(li.dataset.id); return; }
+  const f = ev.target.closest('li.file[data-key]'); // the file name: go to its first diagram unless one of them is open
+  if (f && (!D || groupKey(D) !== f.dataset.key)) { const d = store.diagrams.find(x => groupKey(x) === f.dataset.key); if (d) switchTo(d.id); }
+});
+$('#diagramList').addEventListener('keydown', ev => {
+  const li = ev.target.closest('li[data-id]'); if (!li || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+  ev.preventDefault(); ev.stopPropagation(); switchTo(li.dataset.id);
+  $(`#diagramList li[data-id="${li.dataset.id}"]`)?.focus();
+});
+// removes a file's diagrams from the editor; the file on disk keeps its last saved state
+async function closeFile(key) {
+  const ds = store.diagrams.filter(d => groupKey(d) === key); if (!ds.length) return;
+  const name = groupFileName(ds), saved = ds.some(d => d.fileName), dirty = !saved || ds.some(d => d.fileDirty);
+  if (dirty && !await ask('Close file', saved
+    ? `${name} has changes that are not saved. Close it anyway? Its diagrams are removed from the editor; the file keeps its last saved state.`
+    : `${name} has never been saved. Close it anyway? Its ${ds.length} diagram${ds.length === 1 ? '' : 's'} will be lost.`, { ok: 'Close without saving', danger: true })) return;
+  commitEditor();
+  store.diagrams = store.diagrams.filter(d => groupKey(d) !== key);
+  handles.delete(key); idb.del(key).catch(() => {});
+  if (D && groupKey(D) === key) { D = null; if (store.diagrams.length) switchTo(displayOrder()[0].id); else clearAll(); }
+  else { save(); renderAll(); }
+  toast(`${name} closed`);
+}
 function switchTo(id) { commitEditor(); const d = store.diagrams.find(x => x.id === id); if (!d || d === D) return; endLink();D = d; store.currentId = id; sel.clear(); selEdge = null; undoStack = []; redoStack = []; save(); renderAll(); fit(); }
 $('#bNew').onclick = () => { const d = newDiagram(); store.diagrams.push(d); switchTo(d.id); toast('New diagram created'); };
+// a new diagram in the current file: it joins the group (a single diagram becomes a group with key = its id, so its file handle stays)
+$('#bNewPage').onclick = () => {
+  if (!D) return;
+  const key = groupKey(D), ds = groupOf(D), d = newDiagram();
+  for (const x of ds) { x.fileGroup = key; x.fileDirty = true; }
+  d.fileGroup = key; d.fileName = D.fileName || null; d.fileDirty = true;
+  if (D.fileSource) d.fileSource = D.fileSource;
+  store.diagrams.splice(store.diagrams.indexOf(ds[ds.length - 1]) + 1, 0, d);
+  switchTo(d.id); toast(`New page in ${groupFileName(groupOf(d))}`);
+};
 $('#bDup').onclick = () => { const d = clone(D); d.id = uid(); d.title += ' (copy)'; delete d.fileName; delete d.fileGroup; delete d.fileSource; d.fileDirty = true; d.created = d.updated = new Date().toISOString(); store.diagrams.push(d); switchTo(d.id); };
-$('#bDel').onclick = () => {
-  if (!confirm(`Delete diagram "${D.title}"? This cannot be undone.`)) return;
+const unsavedNote = ds => { const n = ds.filter(d => d.fileDirty || !d.fileName).length; return n ? `\n\n${ds.length === 1 ? 'It has' : n === 1 ? '1 of them has' : n + ' of them have'} changes that are not saved to a file.` : ''; };
+$('#bDel').onclick = async () => {
+  if (!D) return;
+  const inFile = D.fileName && groupOf(D).length > 1;
+  const where = inFile ? ` It stays in ${D.fileName} until you save that file again.` : D.fileName ? ` ${D.fileName} is not touched; use × next to the file name to close it.` : '';
+  if (!await ask('Delete diagram', `Remove "${D.title || 'Untitled'}" from the editor? This cannot be undone.${where}` + unsavedNote([D]), { ok: 'Delete', danger: true })) return;
+  const order = displayOrder(), i = order.indexOf(D);
   store.diagrams = store.diagrams.filter(d => d !== D);
   if (D.fileGroup) for (const d of store.diagrams) if (d.fileGroup === D.fileGroup) d.fileDirty = true; // its file still has the page
-  if (store.diagrams.length) { D = null; switchTo(store.diagrams[0].id); return; }
-  endLink(); D = null; store.currentId = null; sel.clear(); selEdge = null; undoStack = []; redoStack = []; save(); renderAll();
+  const next = order[i + 1] || order[i - 1];
+  if (next) { D = null; switchTo(next.id); return; }
+  clearAll();
+};
+function clearAll() { commitEditor(); endLink(); D = null; store.currentId = null; sel.clear(); selEdge = null; undoStack = []; redoStack = []; save(); renderAll(); }
+$('#bDelAll').onclick = async () => {
+  const n = store.diagrams.length; if (!n) return;
+  if (!await ask('Delete all', `Remove all files and diagrams (${n} diagram${n === 1 ? '' : 's'}) from the editor? This cannot be undone. Files you saved are not touched.` + unsavedNote(store.diagrams), { ok: 'Delete all', danger: true })) return;
+  store.diagrams = []; clearAll(); toast(`${n} diagram${n === 1 ? '' : 's'} deleted`);
 };
 // without a diagram, keys and clicks that need one do nothing (capture: before every other handler)
 document.addEventListener('keydown', ev => {
   if (D || ev.target.matches('input,textarea,select') || document.querySelector('dialog[open]')) return;
   const mod = ev.ctrlKey || ev.metaKey, k = ev.key.toLowerCase();
-  if ((mod && k === 'o') || (!mod && /^(h|\?|f1|escape|tab)$/.test(k)) || (ev.altKey && /^(Digit|Numpad)[012]$/.test(ev.code))) return;
+  if ((mod && k === 'o') || (!mod && /^(h|\?|f1|escape|tab|enter| )$/.test(k)) || (ev.altKey && /^(Digit|Numpad)[012]$/.test(ev.code))) return;
   ev.stopImmediatePropagation(); if (mod) ev.preventDefault();
 }, true);
 function paletteIcon(type) {
@@ -810,12 +969,20 @@ function paletteIcon(type) {
   const sc = Math.min(40 / n.w, 26 / n.h, 1), ox = (44 - n.w * sc) / 2, oy = (30 - n.h * sc) / 2;
   return `<svg viewBox="0 0 44 30"><g transform="translate(${ox},${oy}) scale(${sc})">${nodeSVG(n, {})}</g></svg>`;
 }
-$('#palette').innerHTML = Object.keys(TYPES).map(t => `<div class="tile" draggable="true" data-type="${t}" title="${TYPES[t].label}">${paletteIcon(t)}<span>${TYPES[t].label}</span></div>`).join('');
+$('#palette').innerHTML = Object.keys(TYPES).map(t => `<div class="tile" draggable="true" tabindex="0" role="button" data-type="${t}" title="${TYPES[t].label}: drag onto a lane, or click to add it after the selected element">${paletteIcon(t)}<span>${TYPES[t].label}</span></div>`).join('');
 $('#palette').addEventListener('dragstart', ev => { const t = ev.target.closest('.tile'); if (t) ev.dataTransfer.setData('text/plain', 'swimlane:' + t.dataset.type); });
 $('#palette').addEventListener('click', ev => { const t = ev.target.closest('.tile'); if (t) quickAdd(t.dataset.type); });
-$('#canvasWrap').addEventListener('dragover', ev => ev.preventDefault());
-$('#canvasWrap').addEventListener('drop', ev => {
-  ev.preventDefault(); if (!D) return;
+$('#palette').addEventListener('keydown', ev => {
+  const t = ev.target.closest('.tile'); if (!t || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+  ev.preventDefault(); ev.stopPropagation(); quickAdd(t.dataset.type);
+});
+const hasFiles = ev => [...(ev.dataTransfer?.types || [])].includes('Files');
+$('#canvasWrap').addEventListener('dragover', ev => { ev.preventDefault(); if (hasFiles(ev)) $('#canvasWrap').classList.add('dropping'); });
+$('#canvasWrap').addEventListener('dragleave', ev => { if (!$('#canvasWrap').contains(ev.relatedTarget)) $('#canvasWrap').classList.remove('dropping'); });
+$('#canvasWrap').addEventListener('drop', async ev => {
+  ev.preventDefault(); $('#canvasWrap').classList.remove('dropping');
+  if (ev.dataTransfer.files.length) { for (const f of [...ev.dataTransfer.files]) await openFile(f, null); return; }
+  if (!D) return;
   const data = ev.dataTransfer.getData('text/plain');
   if (!data.startsWith('swimlane:')) return;
   const type = data.slice(9); if (!TYPES[type]) return;
@@ -1038,9 +1205,19 @@ function openEditor({ x, y, w, h, value, multiline = true, align = 'center', onC
   commitEditor();
   const el = document.createElement(multiline ? 'textarea' : 'input');
   el.className = 'inlineEdit'; el.value = value || '';
-  Object.assign(el.style, { left: (x + M) * zoom + 'px', top: (y + topOff()) * zoom + 'px', width: Math.max(w * zoom, 120) + 'px', height: Math.max(h * zoom, 34) + 'px', fontSize: Math.max(12 * zoom, 12) + 'px', textAlign: align });
+  // same place, size and font as the text it edits; a box too small to type in grows around its centre
+  const W = Math.max(w * zoom, 100), H = Math.max(h * zoom, 34);
+  Object.assign(el.style, { left: (x + M) * zoom - (W - w * zoom) / 2 + 'px', top: (y + topOff()) * zoom - (H - h * zoom) / 2 + 'px', width: W + 'px', height: H + 'px',
+    fontSize: Math.max(12 * zoom, 12) + 'px', fontFamily: FONT, lineHeight: 1.25, textAlign: align });
   $('#stage').appendChild(el);
   editor = { el, onCommit, orig: value || '' };
+  // vertically centred like the label in the element
+  const centre = () => {
+    el.style.paddingTop = el.style.paddingBottom = '0px'; el.style.height = '0px';
+    const text = el.scrollHeight; el.style.height = H + 'px';
+    el.style.paddingTop = Math.max(2, (H - 4 - text) / 2) + 'px';
+  };
+  if (multiline && align === 'center') { centre(); el.addEventListener('input', centre); }
   el.focus(); el.select();
   el.addEventListener('keydown', ev => {
     ev.stopPropagation();
@@ -1101,6 +1278,8 @@ function setNodeType(n, type) {
   n.type = type; if (!keepSize) { n.w = t.w; n.h = t.h; }
   n.x = c.x - n.w / 2; n.y = c.y - n.h / 2; snapNode(n);
 }
+const SWATCH_NAMES = { '': 'Default for the element type (0)', '#FFFFFF': 'White', '#EAF2FB': 'Blue (9)', '#E6F5EA': 'Green (8)', '#FFF5DD': 'Yellow (7)', '#FBE9E7': 'Red (6)', '#F1E8FA': 'Purple', '#F2F4F6': 'Grey' };
+const swatchesHTML = cur => `<div class="swatches" role="group" aria-label="Fill color">${SWATCHES.map(c => { const t = SWATCH_NAMES[c] || c; return `<button class="sw ${c ? '' : 'none'} ${cur === c ? 'on' : ''}" data-c="${c}" title="${t}" aria-label="${t}" aria-pressed="${cur === c}" style="${c ? 'background:' + c : ''}">${c ? '' : 'A'}</button>`; }).join('')}</div>`;
 function renderPanel() {
   if (panel.contains(document.activeElement) && document.activeElement.matches('input,textarea')) return; // do not disturb typing
   const help = `<p class="hint" style="margin-top:16px">Press <kbd>H</kbd> or <kbd>?</kbd> for all keyboard shortcuts.</p>`;
@@ -1114,7 +1293,7 @@ function renderPanel() {
       <label class="f">Enters target at</label><select id="eTo">${Object.entries(SIDES).map(([k, v]) => `<option value="${k}" ${(e.toSide || 'auto') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
       <div class="hint" style="margin-top:8px">Drag the line to move its middle segment, e.g. when it lies on another line.</div>
       ${e.bend ? '<div class="row" style="margin-top:8px"><button id="eStraight">Reset line position</button></div>' : ''}
-      <div class="row" style="margin-top:12px"><button id="eRev">Reverse direction</button><button id="eDel" class="danger">Delete</button></div>` + help;
+      <div class="row" style="margin-top:12px"><button id="eRev">Reverse direction</button><button id="eDel" class="danger" title="Delete (Del)">Delete</button></div>` + help;
     $('#eLabel').oninput = panelInput(v => { e.label = v; });
     $('#eType').onchange = ev => mutate(() => { e.type = ev.target.value; });
     $('#eFrom').onchange = ev => mutate(() => { e.fromSide = ev.target.value; delete e.bend; });
@@ -1129,9 +1308,9 @@ function renderPanel() {
     panel.innerHTML = `<h3>${esc(TYPES[n.type].label)}</h3>
       <label class="f">Text</label><textarea id="nText">${esc(n.text)}</textarea>
       <label class="f">Element type</label><select id="nType">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}" ${n.type === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
-      <label class="f">Fill color</label><div class="swatches">${SWATCHES.map(c => `<button class="sw ${c ? '' : 'none'} ${(n.color || '') === c ? 'on' : ''}" data-c="${c}" title="${c || 'Default'}" style="${c ? 'background:' + c : ''}"></button>`).join('')}</div>
+      <label class="f">Fill color</label>${swatchesHTML(n.color || '')}
       <label class="f">Lane</label><select id="nLane">${D.lanes.map((l, i) => `<option value="${i}" ${laneIndexAt(D, n.y + n.h / 2) === i ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
-      <div class="row" style="margin-top:12px"><button id="nDup">Duplicate</button><button id="nDel" class="danger">Delete</button></div>` + help;
+      <div class="row" style="margin-top:12px"><button id="nDup" title="Duplicate (Ctrl+D)">Duplicate</button><button id="nDel" class="danger" title="Delete (Del)">Delete</button></div>` + help;
     $('#nText').oninput = panelInput(v => { n.text = v; });
     $('#nType').onchange = ev => mutate(() => setNodeType(n, ev.target.value));
     panel.querySelectorAll('.sw').forEach(b => b.onclick = () => mutate(() => { if (b.dataset.c) n.color = b.dataset.c; else delete n.color; }));
@@ -1151,10 +1330,10 @@ function renderPanel() {
       <label class="f">Same size as the first</label>
       <div class="row"><button data-size="w">Width</button><button data-size="h">Height</button><button data-size="wh">Both</button></div>
       <label class="f">Element type</label><select id="mType">${type ? '' : opt('', '(mixed)', true)}${Object.entries(TYPES).map(([k, v]) => opt(k, v.label, type === k)).join('')}</select>
-      <label class="f">Fill color</label><div class="swatches">${SWATCHES.map(c => `<button class="sw ${c ? '' : 'none'} ${color === c ? 'on' : ''}" data-c="${c}" title="${c || 'Default'}" style="${c ? 'background:' + c : ''}"></button>`).join('')}</div>
+      <label class="f">Fill color</label>${swatchesHTML(color)}
       <label class="f">Lane</label><select id="mLane">${lane < 0 ? opt(-1, '(several)', true) : ''}${D.lanes.map((l, i) => opt(i, esc(l.name), lane === i)).join('')}</select>
       <div class="row" style="margin-top:12px"><button id="mConn" title="First to second, second to third … (C)">Connect in this order</button></div>
-      <div class="row" style="margin-top:6px"><button id="mDup">Duplicate</button><button id="mDel" class="danger">Delete</button></div>` + help;
+      <div class="row" style="margin-top:6px"><button id="mDup" title="Duplicate (Ctrl+D)">Duplicate</button><button id="mDel" class="danger" title="Delete (Del)">Delete</button></div>` + help;
     const ref = ns[0];
     const AL = { left: n => { n.x = ref.x; }, center: n => { n.x = ref.x + ref.w / 2 - n.w / 2; }, right: n => { n.x = ref.x + ref.w - n.w; },
       top: n => { n.y = ref.y; }, middle: n => { n.y = ref.y + ref.h / 2 - n.h / 2; }, bottom: n => { n.y = ref.y + ref.h - n.h; } };
@@ -1207,12 +1386,14 @@ function renderPanel() {
     const i = +(b.dataset.up ?? b.dataset.down), j = b.dataset.up !== undefined ? i - 1 : i + 1, rel = laneRelative();
     [D.lanes[i], D.lanes[j]] = [D.lanes[j], D.lanes[i]]; applyLaneRelative(rel);
   }));
-  panel.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+  panel.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     const i = +b.dataset.del, l = D.lanes[i];
     if (D.lanes.length === 1) { toast('A diagram needs at least one lane'); return; }
     const count = D.nodes.filter(n => laneIndexAt(D, n.y + n.h / 2) === i).length;
-    if (count && !confirm(`Lane "${l.name}" contains ${count} element(s). Delete lane and elements?`)) return;
+    if (count && !await ask('Delete lane', `Lane "${l.name}" contains ${count} element${count === 1 ? '' : 's'}. Delete the lane and its elements? (Ctrl+Z undoes it.)`, { ok: 'Delete', danger: true })) return;
+    if (D.lanes[i] !== l) return; // changed meanwhile
     mutate(() => { const rel = laneRelative(); D.lanes.splice(i, 1); applyLaneRelative(rel); });
+    if (!count) toast(`Lane "${l.name}" deleted. Ctrl+Z undoes it.`);
   });
   $('#addLane').onclick = () => mutate(() => { D.lanes.push({ id: uid(), name: 'Role ' + (D.lanes.length + 1), height: 140 }); });
   panel.querySelectorAll('#phaseList input').forEach(inp => inp.oninput = panelInput(v => { D.phases[+inp.dataset.i].name = v; }));
@@ -1220,7 +1401,7 @@ function renderPanel() {
     const i = +(b.dataset.pl ?? b.dataset.pr), j = b.dataset.pl !== undefined ? i - 1 : i + 1, rel = phaseRelative();
     [D.phases[i], D.phases[j]] = [D.phases[j], D.phases[i]]; applyPhaseRelative(rel);
   }));
-  panel.querySelectorAll('[data-pdel]').forEach(b => b.onclick = () => mutate(() => { D.phases.splice(+b.dataset.pdel, 1); }));
+  panel.querySelectorAll('[data-pdel]').forEach(b => b.onclick = () => { const p = D.phases[+b.dataset.pdel]; mutate(() => { D.phases.splice(+b.dataset.pdel, 1); }); toast(`Phase "${p.name}" deleted. Ctrl+Z undoes it.`); });
   $('#addPhase').onclick = () => mutate(() => {
     if (!D.phases) D.phases = [];
     const used = D.phases.reduce((a, p) => a + p.width, 0), rest = contentW(D) - used;
@@ -1249,11 +1430,11 @@ function paste() {
   });
 }
 function duplicate() { copySel(); paste(); }
-$('#bDelete').onclick = deleteSelection;
 $('#bUndo').onclick = undo; $('#bRedo').onclick = redo;
 
 document.addEventListener('keydown', ev => {
   if (ev.target.matches('input,textarea,select') || $('#settingsDlg').open) return;
+  if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.closest('button,[role=button],li[tabindex],summary')) return; // activates the focused control
   const mod = ev.ctrlKey || ev.metaKey, k = ev.key.toLowerCase();
   if (k === 'delete' || k === 'backspace') { ev.preventDefault(); deleteSelection(); }
   else if (mod && k === 'z' && !ev.shiftKey) { ev.preventDefault(); undo(); }
@@ -1277,10 +1458,11 @@ document.addEventListener('keydown', ev => {
 /* ================= keyboard shortcuts ================= */
 const SHORTCUTS = [
   ['View and panels', [
-    ['[F10] or [Alt]+[1]', 'Left sidebar (diagrams, elements) on / off'],
-    ['[Tab] or [Alt]+[2]', 'Right sidebar (details) on / off'],
+    ['[Alt]+[1] or [F10]', 'Left sidebar (diagrams, elements) on / off'],
+    ['[Alt]+[2]', 'Right sidebar (details) on / off'],
     ['[T]', 'Toolbar on / off'],
-    ['[Shift]+[Tab] or [Alt]+[0]', 'All bars on / off'],
+    ['[Alt]+[0]', 'All bars on / off'],
+    ['[Tab] / [Shift]+[Tab]', 'Move between buttons and fields'],
     ['[F] or [F11]', 'Full screen on / off'],
     ['[H], [?] or [F1]', 'This help'],
   ]],
@@ -1326,19 +1508,19 @@ $('#bHelpClose').onclick = () => $('#helpDlg').close();
 const COLOR_KEYS = { Digit6: '#FBE9E7', Digit7: '#FFF5DD', Digit8: '#E6F5EA', Digit9: '#EAF2FB', Digit0: null };
 let fitZoom = null;
 function toggleToolbar() { const ui = store.settings.ui; ui.top = ui.top === false; applySidebars(); save(); if (!ui.top) toast('Toolbar hidden. Press T to show it again.'); }
-// Shift+Tab: hides every bar while any is shown, shows all of them when none is
+// Alt+0: hides every bar while any is shown, shows all of them when none is
 function toggleAllBars() {
   commitEditor(); const ui = store.settings.ui, show = !(ui.left || ui.right || ui.top !== false);
   ui.left = ui.right = ui.top = show; applySidebars(); save();
-  if (!show) toast('All bars hidden. Press Shift+Tab to show them again.');
+  if (!show) toast('All bars hidden. Press Alt+0 to show them again.');
 }
 // letter keys by the character on the key (Z sits elsewhere on QWERTZ and AZERTY), by position for non-Latin layouts
 const letterKey = ev => /^[a-z]$/i.test(ev.key) ? ev.key.toUpperCase() : (/^Key([A-Z])$/.exec(ev.code) || [])[1];
 function toggleFullscreen() { if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => toast('Full screen is not available here')); }
 function gotoDiagram(step, abs) {
-  const i = store.diagrams.findIndex(d => d.id === D.id), n = store.diagrams.length;
+  const order = displayOrder(), i = order.indexOf(D), n = order.length; // in the order of the list
   const j = abs === 'first' ? 0 : abs === 'last' ? n - 1 : Math.min(n - 1, Math.max(0, i + step));
-  if (j !== i) switchTo(store.diagrams[j].id);
+  if (j !== i) switchTo(order[j].id);
 }
 document.addEventListener('keydown', ev => {
   if (ev.target.matches('input,textarea,select') || $('#settingsDlg').open) return;
@@ -1350,8 +1532,6 @@ document.addEventListener('keydown', ev => {
   else if (!ev.altKey && (ev.key === '-' || ev.code === 'NumpadSubtract')) { ev.preventDefault(); setZoom(zoom / 1.2); }
   else if (mod) return;
   else if (ev.key === 'F10') { ev.preventDefault(); toggleSidebar('left'); }
-  else if (ev.key === 'Tab' && ev.shiftKey && !ev.altKey) { ev.preventDefault(); toggleAllBars(); }
-  else if (ev.key === 'Tab' && !ev.altKey) { ev.preventDefault(); toggleSidebar('right'); }
   else if (ev.key === 'F1' || ev.key === '?' || letter === 'H') { ev.preventDefault(); openHelp(); }
   else if (letter === 'T') { ev.preventDefault(); toggleToolbar(); }
   else if (letter === 'L') { ev.preventDefault(); arrangeCurrent(); }
@@ -1505,6 +1685,7 @@ function applySidebars() {
   $('#app').classList.toggle('hide-left', !ui.left); $('#app').classList.toggle('hide-right', !ui.right);
   $('#bLeft').classList.toggle('on', ui.left); $('#bRight').classList.toggle('on', ui.right);
   $('#app').classList.toggle('hide-top', ui.top === false);
+  if (typeof refitSoon === 'function') refitSoon();
 }
 function toggleSidebar(side) { commitEditor(); const ui = store.settings.ui; ui[side] = !ui[side]; applySidebars(); save(); }
 $('#bLeft').onclick = () => toggleSidebar('left');
@@ -1517,15 +1698,22 @@ document.addEventListener('keydown', ev => {
 });
 
 /* ================= zoom ================= */
-function setZoom(z) { zoom = Math.min(2.5, Math.max(0.25, z)); if (D) renderCanvas(); }
+// autoFit: the zoom came from Fit, so a change of the window or sidebar size fits again; any other zoom ends it
+let autoFit = false;
+function setZoom(z, auto = false) { zoom = Math.min(2.5, Math.max(0.25, z)); autoFit = auto; if (D) renderCanvas(); }
 $('#bZoomIn').onclick = () => setZoom(zoom * 1.2);
 $('#bZoomOut').onclick = () => setZoom(zoom / 1.2);
 function fit() {
   if (!D) return;
   const w = $('#canvasWrap'), b = contentBounds(D);
-  setZoom(Math.min((w.clientWidth - 20) / (b.x2 + M * 2 + 40), (w.clientHeight - 20) / (b.y2 + topOff() + M + 40), 1.4));
+  if (!w.clientWidth || !w.clientHeight) return;
+  setZoom(Math.min((w.clientWidth - 20) / (b.x2 + M * 2 + 40), (w.clientHeight - 20) / (b.y2 + topOff() + M + 40), 1.4), true);
   w.scrollLeft = 0; w.scrollTop = 0;
 }
+// after the window or a bar changed size (sidebars animate for .18 s)
+let refitTimer = 0;
+function refitSoon() { clearTimeout(refitTimer); refitTimer = setTimeout(() => { if (autoFit && D && !editor && !drag) fit(); }, 230); }
+window.addEventListener('resize', refitSoon);
 $('#bFit').onclick = fit;
 $('#canvasWrap').addEventListener('wheel', ev => { if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); setZoom(zoom * (ev.deltaY < 0 ? 1.1 : 1 / 1.1)); } }, { passive: false });
 
@@ -1839,22 +2027,40 @@ async function exportPDF(list, multi, fname) {
   doc.save(fileName(name) + '.pdf');
 }
 
-$('#bExport').onclick = ev => { ev.stopPropagation(); $('#exportMenu').classList.toggle('open'); };
-document.addEventListener('click', () => $('#exportMenu').classList.remove('open'));
-$('#exportMenu .items').addEventListener('click', async ev => {
+const closeMenus = () => document.querySelectorAll('.menu.open').forEach(m => m.classList.remove('open'));
+function toggleMenu(ev, id) {
+  ev.stopPropagation(); const m = $('#' + id), open = !m.classList.contains('open');
+  closeMenus(); if (!open) return;
+  if (id === 'exportMenu') { // group names say what each export covers
+    const n = groupOf(D).length, all = store.diagrams.length;
+    $('#expFileGrp').textContent = n > 1 ? `This file (${n} diagrams)` : 'This diagram';
+    $('#expDiagramGrp').style.display = n > 1 ? '' : 'none';
+    m.querySelector('[data-exp=pdf]').textContent = n > 1 ? 'PDF – each diagram on one page' : 'PDF – on one page';
+    $('#expAllGrp').textContent = `All files in the editor (${all} diagram${all === 1 ? '' : 's'})`;
+  }
+  m.classList.add('open'); m.querySelector('.items button')?.focus();
+}
+$('#bExport').onclick = ev => toggleMenu(ev, 'exportMenu');
+$('#bSaveMenu').onclick = ev => toggleMenu(ev, 'saveMenu');
+document.addEventListener('click', closeMenus);
+document.addEventListener('keydown', ev => {
+  const m = document.querySelector('.menu.open'); if (!m) return;
+  const items = [...m.querySelectorAll('.items button')], i = items.indexOf(document.activeElement);
+  if (ev.key === 'Escape') { ev.preventDefault(); ev.stopImmediatePropagation(); closeMenus(); m.querySelector(':scope > button').focus(); }
+  else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); ev.stopImmediatePropagation(); items[(i + (ev.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus(); }
+}, true);
+document.querySelectorAll('.menu .items').forEach(el => el.addEventListener('click', async ev => {
   const b = ev.target.closest('[data-exp]'); if (!b) return;
-  $('#exportMenu').classList.remove('open'); commitEditor();
+  closeMenus(); commitEditor();
   const k = b.dataset.exp, base = fileName(D.title);
   try {
     if (k === 'pdf' || k === 'pdf-multi') { toast('Creating PDF…'); await exportPDF(groupOf(D), k === 'pdf-multi'); }
     else if (k === 'pdf-all' || k === 'pdf-all-multi') { toast('Creating PDF…'); await exportPDF(store.diagrams, k === 'pdf-all-multi', 'all_diagrams_' + today()); }
     else if (k === 'saveas') await saveFile(true);
-    else if (k === 'drawio-all') download('all_diagrams_' + today() + '.drawio', drawioFile(store.diagrams), 'application/xml');
     else if (k === 'svg') download(base + '.svg', exportSVGString(D).svg, 'image/svg+xml');
-    else if (k === 'json') download(base + '.swimlane.json', bundle([D]), 'application/json');
     else if (k === 'json-all') download('swimlane_backup_' + today() + '.json', bundle(store.diagrams), 'application/json');
   } catch (e) { console.error(e); toast('Export failed: ' + e.message); }
-});
+}));
 
 /* file handles of opened/saved .drawio files, kept in IndexedDB so Ctrl+S still works after a reload */
 const handles = new Map();
@@ -1887,7 +2093,7 @@ async function saveFile(asNew) {
   }
   try {
     let h = asNew ? null : await getHandle(key);
-    if (h && ds.some(x => x.foreign) && !confirm(`${d.fileName} was not created with this editor.\n\nOK: overwrite it (shapes and styles the editor does not know will be lost)\nCancel: save as a new file`)) h = null;
+    if (h && ds.some(x => x.foreign) && !await ask('Overwrite file?', `${d.fileName} was not created with this editor. If you overwrite it, shapes and styles the editor does not know will be lost.`, { ok: 'Overwrite', cancel: 'Save as new file', danger: true })) h = null;
     if (h && (await h.queryPermission({ mode: 'readwrite' })) !== 'granted' && (await h.requestPermission({ mode: 'readwrite' })) !== 'granted') h = null;
     if (!h) h = await window.showSaveFilePicker({ suggestedName: suggested, types: DRAWIO_PICK });
     const w = await h.createWritable(); await w.write(xml); await w.close();
@@ -1922,7 +2128,7 @@ async function openFile(file, handle) {
       if (linked) delete d.fileSource; else d.fileSource = file.name.replace(/(\.swimlane)?\.json$/i, '');
       const i = store.diagrams.findIndex(x => x.id === d.id);
       if (i >= 0) {
-        if (confirm(`"${d.title}" is already in the editor.\n\nOK: replace it with the version from ${file.name}\nCancel: open as a copy`)) { store.diagrams[i] = d; replaced++; }
+        if (await ask('Diagram already open', `"${d.title}" is already in the editor. Replace it with the version from ${file.name}, or open the file as a copy?`, { ok: 'Replace', cancel: 'Open as copy' })) { store.diagrams[i] = d; replaced++; }
         else { d.id = uid(); d.title += ' (copy)'; d.fileDirty = true; if (!group) d.fileName = null; store.diagrams.push(d); added++; }
       } else { store.diagrams.push(d); added++; }
       last = d;
@@ -1933,6 +2139,8 @@ async function openFile(file, handle) {
   } catch (e) { toast('Could not open ' + file.name + ': ' + e.message); }
 }
 $('#bOpen').onclick = openFiles;
+$('#bEmptyOpen').onclick = openFiles;
+$('#bEmptyNew').onclick = () => $('#bNew').click();
 $('#bSave').onclick = () => saveFile(false);
 $('#fileInput').onchange = async ev => { const fs = [...ev.target.files]; ev.target.value = ''; for (const f of fs) await openFile(f, null); };
 document.addEventListener('keydown', ev => {
@@ -2017,6 +2225,9 @@ $('#logoInput').onchange = ev => {
 /* ================= start ================= */
 load();
 applySidebars();
+// tips in the left sidebar: open until the user closes them once
+$('#tips').open = store.settings.ui?.tips !== false;
+$('#tips').addEventListener('toggle', () => { (store.settings.ui ||= {}).tips = $('#tips').open; save(); });
 renderAll();
 requestAnimationFrame(fit);
 window.addEventListener('beforeunload', () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* ignore */ } });

@@ -7,6 +7,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.2.0] – 2026-11-02
+
+### Added
+
+- **The list is grouped by file**: the left sidebar shows each file with its diagrams as pages below it, with its state (✓ saved, ● unsaved changes or not saved yet); diagrams that are not saved to a file yet are listed below "Not saved to a file". Save writes the file of the current diagram, its tooltip says which file and how many diagrams. `Page Up` / `Page Down` follow the order of the list.
+- **New page**: the new-page button below the list adds a diagram to the current file; Save writes it as another page of that file. The new-diagram button starts a diagram of its own, as before. New diagram, new page, duplicate, delete and delete all are icon buttons with tooltips.
+- **Close a file**: × next to a file name removes its diagrams from the editor (after a question when it has unsaved changes); the file keeps its last saved state.
+- **Delete all**: the button with two bins below the list removes every file and diagram from the editor after a question; files you saved are not touched.
+- **Drop files on the canvas**: a `.drawio` or `.json` file dropped on the drawing area opens like Open….
+- **Empty page with buttons**: without a diagram the drawing area offers "New diagram" and "Open file…".
+
+### Changed
+
+- **Toolbar**: Open, Save and Export are now at the left, next to the app name. "Save as new file…" moved from Export into a small menu next to Save. Undo, Redo, help and settings are icons; every button names its shortcut in the tooltip.
+- **Export menu** groups by what is exported: "This file" (or "This diagram"), "Only this diagram" (shown when the file has several) and "All files in the editor", with shorter labels. The menus work with the arrow keys and `Esc`.
+
+### Removed
+
+- **Export → all diagrams as one `.drawio`**: it downloaded a copy that was not linked to the diagrams, which was easy to confuse with Save. A new diagram goes into an existing file with the new-page button.
+- **Export → JSON backup of a single diagram**: the `.drawio` file already holds the diagram. The JSON backup of everything stays, and JSON files still open.
+- **`Tab` moves between buttons and fields again** instead of hiding the right sidebar; `Alt+2` hides it, `Alt+0` hides all bars (before also `Shift+Tab`). Diagram list entries and element tiles can be reached with `Tab` and used with `Enter`. A clear focus ring shows where the keyboard is.
+- **Delete left the toolbar**: the details panel on the right has Delete for the selected element(s) or connection, and the `Del` key works as before. Deleting a diagram is its own icon button below the list.
+- **Questions** (delete diagram or lane, overwrite a foreign file, diagram already open) use the app's own dialog with clear button labels instead of the browser's OK / Cancel. Deleting a phase or an empty lane says that `Ctrl+Z` undoes it.
+- **Selected connection** is easy to see: a light halo, dots at both ends and a handle on the segment you can drag.
+- **Fill colors** have names in their tooltips (with the keys 6–9 and 0); "Default" is a dashed field marked A instead of a red slash.
+- **Text editing in place** uses the element's font and size and stays centred on it.
+- **Fit** fits again after the window or a sidebar changes size, until you zoom yourself.
+- **Small windows**: below 1250 px the save status hides (the file state in the list stays), below 1100 px the sidebars get narrower and the app name hides, below 900 px the zoom percentage hides, so all toolbar buttons stay reachable.
+- **Tips** in the left sidebar can be collapsed; the editor remembers it. Disabled move arrows in lane and phase rows are hidden, the × turns red only on hover.
+
 ## [1.1.0] – 2026-11-02
 
 ### Added
