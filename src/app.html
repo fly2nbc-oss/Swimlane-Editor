@@ -1076,6 +1076,13 @@ const panel = $('#panel');
 let panelSnap = null; // undo grouping for typing in panel fields
 function panelInput(fn) { return ev => { if (!panelSnap) { panelSnap = snapshot(); pushUndo(panelSnap); } fn(ev.target.value, ev); D.updated = new Date().toISOString(); D.fileDirty = true; save(); renderCanvas(); renderList(); }; }
 panel.addEventListener('focusout', () => { panelSnap = null; });
+// change the type; the size stays unless a circle or a decision is involved, the centre stays
+function setNodeType(n, type) {
+  if (!TYPES[type] || n.type === type) return;
+  const c = center(n), t = TYPES[type], keepSize = !ROUND.has(n.type) && !ROUND.has(type) && type !== 'decision' && n.type !== 'decision';
+  n.type = type; if (!keepSize) { n.w = t.w; n.h = t.h; }
+  n.x = c.x - n.w / 2; n.y = c.y - n.h / 2; snapNode(n);
+}
 function renderPanel() {
   if (panel.contains(document.activeElement) && document.activeElement.matches('input,textarea')) return; // do not disturb typing
   const help = `<p class="hint" style="margin-top:16px">Press <kbd>H</kbd> or <kbd>?</kbd> for all keyboard shortcuts.</p>`;
@@ -1108,7 +1115,7 @@ function renderPanel() {
       <label class="f">Lane</label><select id="nLane">${D.lanes.map((l, i) => `<option value="${i}" ${laneIndexAt(D, n.y + n.h / 2) === i ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
       <div class="row" style="margin-top:12px"><button id="nDup">Duplicate</button><button id="nDel" class="danger">Delete</button></div>` + help;
     $('#nText').oninput = panelInput(v => { n.text = v; });
-    $('#nType').onchange = ev => mutate(() => { const c = center(n), t = TYPES[ev.target.value]; const keepSize = !ROUND.has(n.type) && !ROUND.has(ev.target.value) && ev.target.value !== 'decision' && n.type !== 'decision'; n.type = ev.target.value; if (!keepSize) { n.w = t.w; n.h = t.h; } n.x = c.x - n.w / 2; n.y = c.y - n.h / 2; snapNode(n); });
+    $('#nType').onchange = ev => mutate(() => setNodeType(n, ev.target.value));
     panel.querySelectorAll('.sw').forEach(b => b.onclick = () => mutate(() => { if (b.dataset.c) n.color = b.dataset.c; else delete n.color; }));
     $('#nLane').onchange = ev => mutate(() => { const i = +ev.target.value, tops = laneTops(D); n.y = tops[i] + D.lanes[i].height / 2 - n.h / 2; snapNode(n); clampNode(D, n); });
     $('#nDup').onclick = duplicate;
@@ -1116,18 +1123,46 @@ function renderPanel() {
     return;
   }
   if (sel.size > 1) {
-    panel.innerHTML = `<h3>${sel.size} elements selected</h3>
-      <div class="row"><button id="aRow">Align in a row</button><button id="aCol">Align in a column</button></div>
-      <div class="row" style="margin-top:6px"><button id="aDist">Distribute evenly</button></div>
-      <div class="row" style="margin-top:12px"><button id="mDup">Duplicate</button><button id="mDel" class="danger">Delete</button></div>` + help;
-    const nodes = () => [...sel].map(id => nodeById(D, id));
-    $('#aRow').onclick = () => mutate(() => { const ns = nodes(), cy = center(ns[0]).y; ns.forEach(n => { n.y = cy - n.h / 2; }); });
-    $('#aCol').onclick = () => mutate(() => { const ns = nodes(), cx = center(ns[0]).x; ns.forEach(n => { n.x = cx - n.w / 2; }); });
-    $('#aDist').onclick = () => mutate(() => {
-      const ns = nodes().sort((a, b) => center(a).x - center(b).x); if (ns.length < 3) return;
-      const x0 = center(ns[0]).x, x1 = center(ns[ns.length - 1]).x;
-      ns.forEach((n, i) => { n.x = x0 + (x1 - x0) * i / (ns.length - 1) - n.w / 2; snapNode(n); });
-    });
+    const ns = [...sel].map(id => nodeById(D, id)).filter(Boolean), one = (f, v) => ns.every(n => f(n) === f(ns[0])) ? f(ns[0]) : v;
+    const type = one(n => n.type, ''), color = one(n => n.color || '', null), lane = one(n => laneIndexAt(D, n.y + n.h / 2), -1);
+    const opt = (v, label, on) => `<option value="${v}" ${on ? 'selected' : ''}>${label}</option>`;
+    panel.innerHTML = `<h3>${ns.length} elements selected</h3>
+      <div class="hint">Align and size follow the first selected element.</div>
+      <label class="f">Align horizontally</label>
+      <div class="row"><button data-al="left" title="Left edges">Left</button><button data-al="center" title="Centers one above the other (column)">Center</button><button data-al="right" title="Right edges">Right</button></div>
+      <label class="f">Align vertically</label>
+      <div class="row"><button data-al="top" title="Top edges">Top</button><button data-al="middle" title="Centers side by side (row)">Middle</button><button data-al="bottom" title="Bottom edges">Bottom</button></div>
+      <label class="f">Distribute evenly</label>
+      <div class="row"><button data-dist="x" ${ns.length < 3 ? 'disabled' : ''}>Horizontally</button><button data-dist="y" ${ns.length < 3 ? 'disabled' : ''}>Vertically</button></div>
+      <label class="f">Same size as the first</label>
+      <div class="row"><button data-size="w">Width</button><button data-size="h">Height</button><button data-size="wh">Both</button></div>
+      <label class="f">Element type</label><select id="mType">${type ? '' : opt('', '(mixed)', true)}${Object.entries(TYPES).map(([k, v]) => opt(k, v.label, type === k)).join('')}</select>
+      <label class="f">Fill color</label><div class="swatches">${SWATCHES.map(c => `<button class="sw ${c ? '' : 'none'} ${color === c ? 'on' : ''}" data-c="${c}" title="${c || 'Default'}" style="${c ? 'background:' + c : ''}"></button>`).join('')}</div>
+      <label class="f">Lane</label><select id="mLane">${lane < 0 ? opt(-1, '(several)', true) : ''}${D.lanes.map((l, i) => opt(i, esc(l.name), lane === i)).join('')}</select>
+      <div class="row" style="margin-top:12px"><button id="mConn" title="First to second, second to third … (C)">Connect in this order</button></div>
+      <div class="row" style="margin-top:6px"><button id="mDup">Duplicate</button><button id="mDel" class="danger">Delete</button></div>` + help;
+    const ref = ns[0];
+    const AL = { left: n => { n.x = ref.x; }, center: n => { n.x = ref.x + ref.w / 2 - n.w / 2; }, right: n => { n.x = ref.x + ref.w - n.w; },
+      top: n => { n.y = ref.y; }, middle: n => { n.y = ref.y + ref.h / 2 - n.h / 2; }, bottom: n => { n.y = ref.y + ref.h - n.h; } };
+    panel.querySelectorAll('[data-al]').forEach(b => b.onclick = () => mutate(() => ns.forEach(AL[b.dataset.al])));
+    panel.querySelectorAll('[data-dist]').forEach(b => b.onclick = () => mutate(() => {
+      const c = b.dataset.dist, o = [...ns].sort((a, z) => center(a)[c] - center(z)[c]), v0 = center(o[0])[c], v1 = center(o[o.length - 1])[c];
+      o.forEach((n, i) => { const half = (c === 'x' ? n.w : n.h) / 2; n[c] = Math.round((v0 + (v1 - v0) * i / (o.length - 1)) / GRID) * GRID - half; }); // only this axis snaps
+    }));
+    panel.querySelectorAll('[data-size]').forEach(b => b.onclick = () => mutate(() => {
+      for (const n of ns) {
+        if (n === ref) continue;
+        const c = center(n), k = b.dataset.size;
+        if (ROUND.has(n.type) !== ROUND.has(ref.type)) continue; // circles stay circles
+        if (k.includes('w')) n.w = ref.w; if (k.includes('h')) n.h = ref.h;
+        if (ROUND.has(n.type)) n.w = n.h = k === 'h' ? ref.h : ref.w;
+        n.x = c.x - n.w / 2; n.y = c.y - n.h / 2;
+      }
+    }));
+    $('#mType').onchange = ev => { if (ev.target.value) mutate(() => ns.forEach(n => setNodeType(n, ev.target.value))); };
+    panel.querySelectorAll('.sw').forEach(b => b.onclick = () => mutate(() => ns.forEach(n => { if (b.dataset.c) n.color = b.dataset.c; else delete n.color; })));
+    $('#mLane').onchange = ev => { const i = +ev.target.value; if (i >= 0) mutate(() => ns.forEach(n => { const tops = laneTops(D); n.y = tops[i] + D.lanes[i].height / 2 - n.h / 2; snapNode(n); clampNode(D, n); })); };
+    $('#mConn').onclick = connectSelection;
     $('#mDup').onclick = duplicate; $('#mDel').onclick = deleteSelection;
     return;
   }

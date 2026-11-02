@@ -31,6 +31,7 @@ Download `swimlane-editor.html` from [Releases](https://github.com/fly2nbc-oss/S
 | Add next step | Select an element, click a tile: placed to the right and connected |
 | Connect | Drag from a blue dot of an element to another element, or click the dot, scroll if needed, and click the other element (`Esc` cancels), or select two elements with `Shift` + click and press `C` |
 | Edit text | Double-click, or `Enter` |
+| Several elements | `Shift` + click or drag a box around them; the right panel aligns, distributes, sizes them and sets type, color or lane for all |
 | Save / open | `Ctrl+S` / `Ctrl+O` – after the first save, `Ctrl+S` writes to the same file; diagrams opened from one file (draw.io pages or a JSON list) are saved together as pages of one `.drawio` file |
 
 Firefox and Safari cannot write files directly: **Save** downloads the file instead.
