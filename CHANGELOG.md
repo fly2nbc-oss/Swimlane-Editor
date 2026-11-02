@@ -7,6 +7,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.0.1] – 2026-11-02
+
+### Changed
+
+- **`Shift+Tab` shows or hides all bars** – both sidebars and the toolbar, as in Cerno: while any of them is shown it hides them all, otherwise it shows them all. `Alt+0` does the same (it switched only the two sidebars before).
+
+### Fixed
+
+- **`Z` zooms on German and French keyboards** – the letter keys (`Z`, `T`, `L`, `F`, `H`) follow the character on the key, not its place on a US keyboard. On QWERTZ the zoom used to sit on `Y`.
+
 ### Under the hood
 
 - **Releases can be checked** – each release carries a provenance attestation: `gh attestation verify swimlane-editor.html --repo fly2nbc-oss/Swimlane-Editor` shows it was built by this repository's CI. Published releases can no longer be changed.

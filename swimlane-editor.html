@@ -676,7 +676,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.0.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.0.1'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -1437,7 +1437,7 @@ const SHORTCUTS = [
     ['[F10] or [Alt]+[1]', 'Left sidebar (diagrams, elements) on / off'],
     ['[Tab] or [Alt]+[2]', 'Right sidebar (details) on / off'],
     ['[T]', 'Toolbar on / off'],
-    ['[Alt]+[0]', 'Both sidebars on / off'],
+    ['[Shift]+[Tab] or [Alt]+[0]', 'All bars on / off'],
     ['[F] or [F11]', 'Full screen on / off'],
     ['[H], [?] or [F1]', 'This help'],
   ]],
@@ -1473,7 +1473,7 @@ const SHORTCUTS = [
 ];
 const kbd = t => esc(t).replace(/\[([^\]]+)\]/g, '<kbd>$1</kbd>');
 $('#helpBody').innerHTML = SHORTCUTS.map(([g, rows]) => `<h4>${g}</h4><table>${rows.map(([k, v]) => `<tr><td>${kbd(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`).join('') +
-  `<p class="hint">Swimlane Editor ${APP_VERSION} \u00B7 Copyright 2026 fly2nbc-oss \u00B7 Apache License 2.0. Includes jsPDF and svg2pdf.js (MIT).</p><p class="hint">Keys follow Cerno where the meaning is the same: F10, Tab and T for the bars, Z / Ctrl+0 / Ctrl+1 for zoom, F for full screen, H for help, 6 to 9 for colour labels, Ctrl+Z for undo, Ctrl+O to open.</p>`;
+  `<p class="hint">Swimlane Editor ${APP_VERSION} \u00B7 Copyright 2026 fly2nbc-oss \u00B7 Apache License 2.0. Includes jsPDF and svg2pdf.js (MIT).</p><p class="hint">Keys follow Cerno where the meaning is the same: F10, Tab and T for the bars, Shift+Tab for all of them, Z / Ctrl+0 / Ctrl+1 for zoom, F for full screen, H for help, 6 to 9 for colour labels, Ctrl+Z for undo, Ctrl+O to open.</p>`;
 const openHelp = () => { if (!$('#helpDlg').open) $('#helpDlg').showModal(); };
 $('#bHelp').onclick = openHelp;
 $('#bHelpClose').onclick = () => $('#helpDlg').close();
@@ -1481,6 +1481,14 @@ $('#bHelpClose').onclick = () => $('#helpDlg').close();
 const COLOR_KEYS = { Digit6: '#FBE9E7', Digit7: '#FFF5DD', Digit8: '#E6F5EA', Digit9: '#EAF2FB', Digit0: null };
 let fitZoom = null;
 function toggleToolbar() { const ui = store.settings.ui; ui.top = ui.top === false; applySidebars(); save(); if (!ui.top) toast('Toolbar hidden. Press T to show it again.'); }
+// Shift+Tab (as in Cerno): hides every bar while any is shown, shows all of them when none is
+function toggleAllBars() {
+  commitEditor(); const ui = store.settings.ui, show = !(ui.left || ui.right || ui.top !== false);
+  ui.left = ui.right = ui.top = show; applySidebars(); save();
+  if (!show) toast('All bars hidden. Press Shift+Tab to show them again.');
+}
+// letter keys by the character on the key (Z sits elsewhere on QWERTZ and AZERTY), by position for non-Latin layouts
+const letterKey = ev => /^[a-z]$/i.test(ev.key) ? ev.key.toUpperCase() : (/^Key([A-Z])$/.exec(ev.code) || [])[1];
 function toggleFullscreen() { if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => toast('Full screen is not available here')); }
 function gotoDiagram(step, abs) {
   const i = store.diagrams.findIndex(d => d.id === D.id), n = store.diagrams.length;
@@ -1490,19 +1498,20 @@ function gotoDiagram(step, abs) {
 document.addEventListener('keydown', ev => {
   if (ev.target.matches('input,textarea,select') || $('#settingsDlg').open) return;
   if ($('#helpDlg').open) { if (/^(h|\?|f1)$/i.test(ev.key)) { ev.preventDefault(); $('#helpDlg').close(); } return; }
-  const mod = ev.ctrlKey || ev.metaKey, plain = !mod && !ev.altKey && !ev.shiftKey;
+  const mod = ev.ctrlKey || ev.metaKey, plain = !mod && !ev.altKey && !ev.shiftKey, letter = plain && letterKey(ev);
   if (mod && !ev.altKey && (ev.code === 'Digit0' || ev.code === 'Numpad0')) { ev.preventDefault(); fit(); fitZoom = zoom; }
   else if (mod && !ev.altKey && (ev.code === 'Digit1' || ev.code === 'Numpad1')) { ev.preventDefault(); setZoom(1); }
   else if (!ev.altKey && (ev.key === '+' || ev.key === '=' || ev.code === 'NumpadAdd')) { ev.preventDefault(); setZoom(zoom * 1.2); }
   else if (!ev.altKey && (ev.key === '-' || ev.code === 'NumpadSubtract')) { ev.preventDefault(); setZoom(zoom / 1.2); }
   else if (mod) return;
   else if (ev.key === 'F10') { ev.preventDefault(); toggleSidebar('left'); }
+  else if (ev.key === 'Tab' && ev.shiftKey && !ev.altKey) { ev.preventDefault(); toggleAllBars(); }
   else if (ev.key === 'Tab' && !ev.altKey) { ev.preventDefault(); toggleSidebar('right'); }
-  else if (ev.key === 'F1' || ev.key === '?' || (plain && ev.code === 'KeyH')) { ev.preventDefault(); openHelp(); }
-  else if (plain && ev.code === 'KeyT') { ev.preventDefault(); toggleToolbar(); }
-  else if (plain && ev.code === 'KeyL') { ev.preventDefault(); arrangeCurrent(); }
-  else if ((plain && ev.code === 'KeyF') || ev.key === 'F11') { ev.preventDefault(); toggleFullscreen(); }
-  else if (plain && ev.code === 'KeyZ') { ev.preventDefault(); if (Math.abs(zoom - 1) < 0.01) { fit(); fitZoom = zoom; } else setZoom(1); }
+  else if (ev.key === 'F1' || ev.key === '?' || letter === 'H') { ev.preventDefault(); openHelp(); }
+  else if (letter === 'T') { ev.preventDefault(); toggleToolbar(); }
+  else if (letter === 'L') { ev.preventDefault(); arrangeCurrent(); }
+  else if (letter === 'F' || ev.key === 'F11') { ev.preventDefault(); toggleFullscreen(); }
+  else if (letter === 'Z') { ev.preventDefault(); if (Math.abs(zoom - 1) < 0.01) { fit(); fitZoom = zoom; } else setZoom(1); }
   else if (ev.key === 'PageDown') { ev.preventDefault(); gotoDiagram(1); }
   else if (ev.key === 'PageUp') { ev.preventDefault(); gotoDiagram(-1); }
   else if (ev.key === 'Home') { ev.preventDefault(); gotoDiagram(0, 'first'); }
@@ -1645,7 +1654,7 @@ document.addEventListener('keydown', ev => {
   if (!ev.altKey || ev.ctrlKey || ev.metaKey) return;
   if (ev.code === 'Digit1') { ev.preventDefault(); toggleSidebar('left'); }
   else if (ev.code === 'Digit2') { ev.preventDefault(); toggleSidebar('right'); }
-  else if (ev.code === 'Digit0') { ev.preventDefault(); const ui = store.settings.ui, show = !(ui.left || ui.right); ui.left = ui.right = show; applySidebars(); save(); }
+  else if (ev.code === 'Digit0') { ev.preventDefault(); toggleAllBars(); }
 });
 
 /* ================= zoom ================= */
