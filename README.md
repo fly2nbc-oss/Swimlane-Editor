@@ -31,7 +31,7 @@ Download `swimlane-editor.html` from [Releases](https://github.com/fly2nbc-oss/S
 | Add next step | Select an element, click a tile: placed to the right and connected |
 | Connect | Drag from a blue dot of an element to another element |
 | Edit text | Double-click, or `Enter` |
-| Save / open | `Ctrl+S` / `Ctrl+O` – after the first save, `Ctrl+S` writes to the same file |
+| Save / open | `Ctrl+S` / `Ctrl+O` – after the first save, `Ctrl+S` writes to the same file; diagrams opened from one file (draw.io pages or a JSON list) are saved together as pages of one `.drawio` file |
 
 Firefox and Safari cannot write files directly: **Save** downloads the file instead.
 

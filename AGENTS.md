@@ -45,8 +45,8 @@ Then open `swimlane-editor.html` in Chrome or Edge. Commit `src/app.html` and `s
   lanes:  [{ id, name, height }],            // top to bottom
   phases: [{ id, name, width }],             // left to right, optional
   nodes:  [{ id, type, x, y, w, h, text, color? }],
-  edges:  [{ id, from, to, label, type, fromSide, toSide }],
-  fileName?, fileDirty?, foreign? }          // runtime state, not exported
+  edges:  [{ id, from, to, label, type, fromSide, toSide, bend? }],  // bend: manual offset of the middle segment
+  fileName?, fileDirty?, foreign?, fileGroup?, fileSource? }  // runtime, not exported; fileGroup = saved together, fileSource = JSON name for the first save
 ```
 
 - Coordinates: pool starts at (0,0). Header columns `POOL_HDR` 32 + `LANE_HDR` 36, content starts at `CX` = 68. Phase header row above the pool at y = -28 (`PHASE_HDR`).
@@ -56,13 +56,13 @@ Then open `swimlane-editor.html` in Chrome or Edge. Commit `src/app.html` and `s
 ## Main parts of src/app.html (search for the `/* ===` comments)
 
 - **store**: `localStorage` key `swimlane-editor.v1` = working copy of all diagrams plus settings (logo, company, sidebar state).
-- **geometry**: lanes, phases, `route()` = orthogonal edge routing, `autoSides()`.
+- **geometry**: lanes, phases, `buildRoute()` / `routeInfo()` / `route()` = orthogonal edge routing; `routePlan()` (cached) moves lines off elements and spreads overlapping middle segments; `autoSides()`.
 - **rendering**: `diagramMarkup(d, {interactive})` builds SVG as a string, used for canvas, SVG export and PDF alike.
-- **canvas interaction**: pointer events with drag modes (`move`, `resize`, `connect`, `lane`, `phase`, `poolw`, `box`); own double-click detection because the SVG is re-rendered between clicks.
+- **canvas interaction**: pointer events with drag modes (`move`, `resize`, `connect`, `lane`, `phase`, `poolw`, `box`, `bend`); own double-click detection because the SVG is re-rendered between clicks.
 - **right panel**: `renderPanel()` per selection (edge, single node, multi, diagram).
 - **keyboard**: `SHORTCUTS` also drives the help dialog (`H`).
 - **draw.io**: `drawioDiagram()` writes `<object>` cells with `swl*` properties so files round-trip; `parseDrawio()` / `modelToDiagram()` read them back, including compressed files and pools drawn in draw.io.
-- **files**: File System Access API; handles in IndexedDB (`swimlane-editor` / `handles`) so Ctrl+S writes to the same file. Fallback: download.
+- **files**: File System Access API; handles in IndexedDB (`swimlane-editor` / `handles`, key = `fileGroup` or diagram id) so Ctrl+S writes to the same file; `saveFile()` writes every diagram of the group (`groupOf()`) as one page. Fallback: download.
 - **import**: `validate()` normalises JSON and draw.io diagrams, then `harden()`.
 - **automatic layout**: `autoLayout(d, hints)`: loops broken by DFS, columns by longest path over flow edges, phases kept in order, extra rows for parallel branches, artifacts below their step. Used by Arrange (`L`) and on JSON import without `x`/`y` (hints `lane`, `phase`, `col`).
 - **PDF**: `exportPDF(d, multi)`; `pdfFrame()` draws header and footer; multi-page splits at phase borders or gaps (`pageSegments()`).

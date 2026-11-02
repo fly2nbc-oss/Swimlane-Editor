@@ -7,6 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+### Added
+
+- **Move connections**: drag a line to move its middle segment, e.g. when it lies on another line. "Reset line position" in the panel, a change of side, Reverse or Arrange put it back. The offset is saved in JSON and `.drawio` files (`swlBend`).
+- **Files with several diagrams are saved together**: diagrams opened from one file – a draw.io file with several pages or a JSON file with several diagrams – stay linked; `Ctrl+S` writes all of them as pages of one `.drawio` file. The status bar shows the page ("page 2 of 3"). A draw.io file with several pages stays linked to its file; a JSON list asks for a `.drawio` name on its first save.
+- **Save suggests the JSON file's name**: a diagram opened from `purchasing.json` suggests `purchasing.drawio` on its first save (before: the diagram title). Duplicate makes a separate diagram.
+- **Lines avoid elements**: when a connection would run through an element, the automatic routing tries other positions of its middle segment and, for sides set to Auto, other sides, and takes the route through the fewest elements.
+- **Overlapping lines are spread apart**: when the middle segments of several connections would lie on top of each other, they are drawn side by side.
+
 ## [1.0.2] – 2026-11-02
 
 ### Changed

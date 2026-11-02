@@ -772,9 +772,10 @@ function save() {
 }
 function renderSaveState() {
   const el = $('#saveState'); if (!D) return;
-  if (!D.fileName) { el.textContent = 'Not saved to a file yet'; el.className = 'dirty'; el.title = 'Only stored in this browser. Click Save to create a .drawio file.'; }
-  else if (D.fileDirty) { el.textContent = '\u25CF Unsaved changes \u00B7 ' + D.fileName; el.className = 'dirty'; el.title = 'Press Ctrl+S to save to ' + D.fileName; }
-  else { el.textContent = '\u2713 ' + D.fileName; el.className = ''; el.title = 'Saved to ' + D.fileName; }
+  const g = groupOf(D), page = g.length > 1 ? ` (page ${g.indexOf(D) + 1} of ${g.length})` : '', all = g.length > 1 ? ` with all ${g.length} pages` : '';
+  if (!D.fileName) { el.textContent = 'Not saved to a file yet' + page; el.className = 'dirty'; el.title = `Only stored in this browser. Click Save to create a .drawio file${all}.`; }
+  else if (g.some(x => x.fileDirty)) { el.textContent = '\u25CF Unsaved changes \u00B7 ' + D.fileName + page; el.className = 'dirty'; el.title = `Press Ctrl+S to save to ${D.fileName}${all}`; }
+  else { el.textContent = '\u2713 ' + D.fileName + page; el.className = ''; el.title = 'Saved to ' + D.fileName; }
 }
 
 /* ================= undo ================= */
@@ -840,40 +841,138 @@ function edgeSides(d, e) {
   if (e.toSide && e.toSide !== 'auto') sb = e.toSide;
   return [sa, sb];
 }
-function route(d, e) {
+// A route has one movable middle segment: `k` is its offset from the automatic position along `axis`
+// ('x' = a vertical segment moved sideways, 'y' = a horizontal segment moved up or down).
+// e.bend (optional) is a manual offset; without it, routePlan() picks sides and offset.
+function buildRoute(d, e, sa, sb, k) {
   const a = nodeById(d, e.from), b = nodeById(d, e.to);
-  const [sa, sb] = edgeSides(d, e);
   const p1 = sidePoint(a, sa), p2 = sidePoint(b, sb), S = 18;
   const d1 = DIR[sa], d2 = DIR[sb];
   const s = { x: p1.x + d1[0] * S, y: p1.y + d1[1] * S }, t = { x: p2.x + d2[0] * S, y: p2.y + d2[1] * S };
   const h1 = d1[0] !== 0, h2 = d2[0] !== 0;
-  let mid;
+  let mid, axis, base;
   if (h1 && h2) {
     const backward = (sa === 'right' && sb === 'left' && p2.x < p1.x + 8) || (sa === 'left' && sb === 'right' && p2.x > p1.x - 8);
     if (backward) {
-      const my = Math.abs(s.y - t.y) > 30 ? (s.y + t.y) / 2 : Math.max(a.y + a.h, b.y + b.h) + 20;
+      axis = 'y'; base = Math.abs(s.y - t.y) > 30 ? (s.y + t.y) / 2 : Math.max(a.y + a.h, b.y + b.h) + 20;
+      const my = base + k;
       mid = [s, { x: s.x, y: my }, { x: t.x, y: my }, t];
     } else {
-      const mx = sa === sb ? (sa === 'right' ? Math.max(s.x, t.x) : Math.min(s.x, t.x)) : (p1.x + p2.x) / 2;
-      mid = sa === sb ? [s, { x: mx, y: s.y }, { x: mx, y: t.y }, t] : [{ x: mx, y: p1.y }, { x: mx, y: p2.y }];
+      axis = 'x'; base = sa === sb ? (sa === 'right' ? Math.max(s.x, t.x) : Math.min(s.x, t.x)) : (p1.x + p2.x) / 2;
+      const mx = base + k;
+      mid = sa === sb || k ? [s, { x: mx, y: s.y }, { x: mx, y: t.y }, t] : [{ x: mx, y: p1.y }, { x: mx, y: p2.y }];
     }
   } else if (!h1 && !h2) {
     const backward = (sa === 'bottom' && sb === 'top' && p2.y < p1.y + 8) || (sa === 'top' && sb === 'bottom' && p2.y > p1.y - 8);
     if (backward) {
-      const mx = Math.abs(s.x - t.x) > 30 ? (s.x + t.x) / 2 : Math.max(a.x + a.w, b.x + b.w) + 20;
+      axis = 'x'; base = Math.abs(s.x - t.x) > 30 ? (s.x + t.x) / 2 : Math.max(a.x + a.w, b.x + b.w) + 20;
+      const mx = base + k;
       mid = [s, { x: mx, y: s.y }, { x: mx, y: t.y }, t];
     } else {
-      const my = sa === sb ? (sa === 'bottom' ? Math.max(s.y, t.y) : Math.min(s.y, t.y)) : (p1.y + p2.y) / 2;
-      mid = sa === sb ? [s, { x: s.x, y: my }, { x: t.x, y: my }, t] : [{ x: p1.x, y: my }, { x: p2.x, y: my }];
+      axis = 'y'; base = sa === sb ? (sa === 'bottom' ? Math.max(s.y, t.y) : Math.min(s.y, t.y)) : (p1.y + p2.y) / 2;
+      const my = base + k;
+      mid = sa === sb || k ? [s, { x: s.x, y: my }, { x: t.x, y: my }, t] : [{ x: p1.x, y: my }, { x: p2.x, y: my }];
     }
   } else if (h1) {
+    axis = 'x'; base = t.x;
     const ok = (p2.x - p1.x) * d1[0] > 8 && (p1.y - p2.y) * d2[1] > 8;
-    mid = ok ? [{ x: p2.x, y: p1.y }] : [s, { x: t.x, y: s.y }, t];
+    mid = k ? [s, { x: base + k, y: s.y }, { x: base + k, y: t.y }, t] : ok ? [{ x: p2.x, y: p1.y }] : [s, { x: t.x, y: s.y }, t];
   } else {
+    axis = 'y'; base = t.y;
     const ok = (p2.y - p1.y) * d1[1] > 8 && (p1.x - p2.x) * d2[0] > 8;
-    mid = ok ? [{ x: p1.x, y: p2.y }] : [s, { x: s.x, y: t.y }, t];
+    mid = k ? [s, { x: s.x, y: base + k }, { x: t.x, y: base + k }, t] : ok ? [{ x: p1.x, y: p2.y }] : [s, { x: s.x, y: t.y }, t];
   }
-  return simplify([p1, ...mid, p2]);
+  return { pts: simplify([p1, ...mid, p2]), axis, base, spreadable: h1 === h2 };
+}
+function routeInfo(d, e) {
+  const plan = Number.isFinite(e.bend) ? null : routePlan(d).get(e.id);
+  const [sa, sb] = plan ? plan.sides : edgeSides(d, e), auto = plan ? plan.k : 0;
+  return { ...buildRoute(d, e, sa, sb, Number.isFinite(e.bend) ? e.bend : auto), auto, sides: [sa, sb] };
+}
+function route(d, e) { return routeInfo(d, e).pts; }
+// number of elements a route runs through (its own two elements count when it crosses their inside)
+function routeHits(d, e, pts, nodes) {
+  let n = 0;
+  for (const o of nodes) {
+    const m = o.id === e.from || o.id === e.to ? -2 : 4, x1 = o.x - m, x2 = o.x + o.w + m, y1 = o.y - m, y2 = o.y + o.h + m;
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], q = pts[i];
+      if (Math.max(p.x, q.x) > x1 && Math.min(p.x, q.x) < x2 && Math.max(p.y, q.y) > y1 && Math.min(p.y, q.y) < y2) { n++; break; }
+    }
+  }
+  return n;
+}
+// Automatic routing for all connections without a manual bend, cached per diagram state:
+// 1. a route that runs through elements tries other positions of its middle segment and, where its sides
+//    are 'auto', other sides; the one through the fewest elements wins, then the shorter one;
+// 2. middle segments that would lie on top of each other are spread apart (Z and U shapes only;
+//    L shapes end in a port and may share it).
+const planCache = new WeakMap(), SPREAD = 10, SIDE_LIST = ['right', 'left', 'top', 'bottom'];
+function routePlan(d) {
+  const key = JSON.stringify([d.nodes.map(n => [n.id, n.x, n.y, n.w, n.h]), d.edges.map(e => [e.id, e.from, e.to, e.fromSide, e.toSide, e.bend])]);
+  const hit = planCache.get(d);
+  if (hit && hit.key === key) return hit.plan;
+  const plan = new Map();
+  for (const e of d.edges) {
+    const a = nodeById(d, e.from), b = nodeById(d, e.to);
+    if (Number.isFinite(e.bend) || !a || !b) continue;
+    const sides0 = edgeSides(d, e), r0 = buildRoute(d, e, sides0[0], sides0[1], 0);
+    let best = { sides: sides0, k: 0 };
+    // only elements near the two ends can be in the way
+    const x1 = Math.min(a.x, b.x) - 300, x2 = Math.max(a.x + a.w, b.x + b.w) + 300, y1 = Math.min(a.y, b.y) - 300, y2 = Math.max(a.y + a.h, b.y + b.h) + 300;
+    const near = d.nodes.filter(o => o.x < x2 && o.x + o.w > x1 && o.y < y2 && o.y + o.h > y1);
+    if (routeHits(d, e, r0.pts, near)) {
+      let bestCost = Infinity;
+      const tryCombo = (sa, sb, penalty) => {
+        const r = buildRoute(d, e, sa, sb, 0), ks = new Set([0]);
+        for (const o of near) {
+          const lo = r.axis === 'x' ? o.x : o.y, hi = lo + (r.axis === 'x' ? o.w : o.h);
+          ks.add(Math.round((lo - 20) / GRID) * GRID - r.base); ks.add(Math.round((hi + 20) / GRID) * GRID - r.base);
+        }
+        for (const k of ks) {
+          const pts = k ? buildRoute(d, e, sa, sb, k).pts : r.pts;
+          const cost = routeHits(d, e, pts, near) * 1e6 + pathLen(pts) + pts.length * 20 + penalty;
+          if (cost < bestCost) { bestCost = cost; best = { sides: [sa, sb], k }; }
+        }
+      };
+      tryCombo(sides0[0], sides0[1], 0);
+      if (bestCost >= 1e6) {
+        const fromC = e.fromSide && e.fromSide !== 'auto' ? [e.fromSide] : SIDE_LIST, toC = e.toSide && e.toSide !== 'auto' ? [e.toSide] : SIDE_LIST;
+        for (const sa of fromC) for (const sb of toC) if (sa !== sides0[0] || sb !== sides0[1]) tryCombo(sa, sb, 60);
+      }
+    }
+    plan.set(e.id, best);
+  }
+  // spread middle segments that lie on top of each other
+  const segs = [];
+  for (const e of d.edges) {
+    const pl = plan.get(e.id); if (!pl) continue;
+    const r = buildRoute(d, e, pl.sides[0], pl.sides[1], pl.k);
+    if (!r.spreadable) continue;
+    const o = r.axis === 'x' ? 'y' : 'x', pos = r.base + pl.k, pts = r.pts;
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], q = pts[i];
+      if (Math.abs(p[r.axis] - pos) < 0.5 && Math.abs(q[r.axis] - pos) < 0.5 && Math.abs(p[o] - q[o]) > 0.5) {
+        segs.push({ id: e.id, axis: r.axis, pos, lo: Math.min(p[o], q[o]), hi: Math.max(p[o], q[o]) });
+        break;
+      }
+    }
+  }
+  const done = new Set();
+  for (const sg of segs) {
+    if (done.has(sg)) continue;
+    // collect every segment that overlaps this one, directly or through another one
+    const group = [sg]; done.add(sg);
+    for (let i = 0; i < group.length; i++) for (const o of segs) {
+      if (done.has(o) || o.axis !== group[i].axis || Math.abs(o.pos - group[i].pos) > 2) continue;
+      if (Math.min(o.hi, group[i].hi) - Math.max(o.lo, group[i].lo) > 4) { group.push(o); done.add(o); }
+    }
+    if (group.length < 2) continue;
+    group.sort((a, b) => a.lo - b.lo || a.hi - b.hi);
+    group.forEach((g, i) => { plan.get(g.id).k += Math.round((i - (group.length - 1) / 2) * SPREAD); });
+  }
+  planCache.set(d, { key, plan });
+  return plan;
 }
 function simplify(pts) {
   const r = [];
@@ -951,7 +1050,7 @@ function arrowHead(a, b, filled) {
   return `<polygon points="${b.x},${b.y} ${bx - uy * half},${by + ux * half} ${bx + uy * half},${by - ux * half}" fill="${filled ? '#3A4450' : '#ffffff'}" stroke="#3A4450" stroke-width="1.3" stroke-linejoin="round"/>`;
 }
 function edgeSVG(d, e, { interactive, selected }) {
-  const pts = route(d, e);
+  const { pts, axis } = routeInfo(d, e);
   const dstr = 'M' + pts.map(p => `${p.x},${p.y}`).join(' L');
   const color = selected ? '#0a5ea8' : '#3A4450';
   const dash = e.type === 'message' ? ' stroke-dasharray="7 4"' : e.type === 'assoc' ? ' stroke-dasharray="2 3"' : '';
@@ -963,7 +1062,7 @@ function edgeSVG(d, e, { interactive, selected }) {
     const p = labelPos(d, e, pts), lines = wrap(e.label, 120, 11), lw = Math.max(...lines.map(l => measure(l, 11))) + 8, lh = lines.length * 13.75 + 4;
     s += `<rect x="${p.x - lw / 2}" y="${p.y - lh / 2}" width="${lw}" height="${lh}" rx="3" fill="#ffffff" fill-opacity="0.92"/>` + textBlock(lines, p.x, p.y, { size: 11, color: '#2a333d' });
   }
-  if (interactive) s = `<g data-kind="edge" data-id="${esc(e.id)}"><path class="edgehit" d="${dstr}" fill="none" stroke="#000" stroke-opacity="0" stroke-width="12"/>${s}</g>`;
+  if (interactive) s = `<g data-kind="edge" data-id="${esc(e.id)}" style="cursor:${axis === 'x' ? 'ew-resize' : 'ns-resize'}"><path class="edgehit" d="${dstr}" fill="none" stroke="#000" stroke-opacity="0" stroke-width="12"/>${s}</g>`;
   return s;
 }
 function lanesSVG(d, interactive) {
@@ -1054,10 +1153,11 @@ function renderList() {
 $('#diagramList').addEventListener('click', ev => { const li = ev.target.closest('li'); if (li) switchTo(li.dataset.id); });
 function switchTo(id) { commitEditor(); const d = store.diagrams.find(x => x.id === id); if (!d || d === D) return; D = d; store.currentId = id; sel.clear(); selEdge = null; undoStack = []; redoStack = []; save(); renderAll(); fit(); }
 $('#bNew').onclick = () => { const d = newDiagram(); store.diagrams.push(d); switchTo(d.id); toast('New diagram created'); };
-$('#bDup').onclick = () => { const d = clone(D); d.id = uid(); d.title += ' (copy)'; delete d.fileName; d.fileDirty = true; d.created = d.updated = new Date().toISOString(); store.diagrams.push(d); switchTo(d.id); };
+$('#bDup').onclick = () => { const d = clone(D); d.id = uid(); d.title += ' (copy)'; delete d.fileName; delete d.fileGroup; delete d.fileSource; d.fileDirty = true; d.created = d.updated = new Date().toISOString(); store.diagrams.push(d); switchTo(d.id); };
 $('#bDel').onclick = () => {
   if (!confirm(`Delete diagram "${D.title}"? This cannot be undone.`)) return;
   store.diagrams = store.diagrams.filter(d => d !== D);
+  if (D.fileGroup) for (const d of store.diagrams) if (d.fileGroup === D.fileGroup) d.fileDirty = true; // its file still has the page
   if (!store.diagrams.length) store.diagrams.push(newDiagram());
   D = null; switchTo(store.diagrams[0].id);
 };
@@ -1148,7 +1248,10 @@ svg.addEventListener('pointerdown', ev => {
     drag = { mode: 'move', start: p, clickId: id, orig: new Map([...sel].map(i => { const n = nodeById(D, i); return [i, { x: n.x, y: n.y }]; })), snap: snapshot(), moved: false, additive: ev.shiftKey || ev.ctrlKey || ev.metaKey };
     renderAll();
   } else if (kind === 'edge') {
-    selEdge = t.dataset.id; sel.clear(); renderAll();
+    selEdge = t.dataset.id; sel.clear();
+    const e = D.edges.find(x => x.id === selEdge);
+    if (e) { const r = routeInfo(D, e); drag = { mode: 'bend', id: e.id, axis: r.axis, base: r.base, auto: r.auto, sides: r.sides, start: p, orig: Number.isFinite(e.bend) ? e.bend : r.auto, snap: snapshot(), moved: false }; }
+    renderAll();
   } else if (kind === 'lanesplit') {
     const i = +t.dataset.i, tops = laneTops(D);
     const minH = Math.max(60, ...D.nodes.filter(n => laneIndexAt(D, n.y + n.h / 2) === i).map(n => n.y + n.h - tops[i] + 10));
@@ -1181,6 +1284,19 @@ function onMove(ev) {
     let w = Math.max(30, Math.round((drag.orig.w + p.x - drag.start.x) / GRID) * GRID), h = Math.max(30, Math.round((drag.orig.h + p.y - drag.start.y) / GRID) * GRID);
     if (ROUND.has(n.type)) w = h = Math.max(w, h);
     n.w = w; n.h = h;
+  } else if (drag.mode === 'bend') {
+    const e = D.edges.find(x => x.id === drag.id), delta = drag.axis === 'x' ? p.x - drag.start.x : p.y - drag.start.y;
+    if (!e || (!drag.moved && Math.abs(delta) < 3)) return;
+    if (!drag.moved) {
+      // keep the sides the automatic routing chose, so the line does not jump when it gets a manual offset
+      const [sa, sb] = edgeSides(D, e);
+      if (sa !== drag.sides[0]) e.fromSide = drag.sides[0];
+      if (sb !== drag.sides[1]) e.toSide = drag.sides[1];
+    }
+    drag.moved = true;
+    // snap the segment to the grid; close to its automatic position it snaps back there
+    const pos = drag.base + drag.orig + delta, snapped = Math.round(pos / GRID) * GRID;
+    if (Math.abs(pos - drag.base - drag.auto) < GRID / 2 || snapped === drag.base) delete e.bend; else e.bend = snapped - drag.base;
   } else if (drag.mode === 'connect') {
     drag.cur = p;
   } else if (drag.mode === 'lane') {
@@ -1207,7 +1323,7 @@ function onUp(ev) {
   if (dr.mode === 'move') {
     if (dr.moved) { pushUndo(dr.snap); changed(); }
     else if (!dr.additive && sel.size > 1) { sel = new Set([dr.clickId]); renderAll(); }
-  } else if (dr.mode === 'resize' || dr.mode === 'lane' || dr.mode === 'phase' || dr.mode === 'poolw') {
+  } else if (dr.mode === 'resize' || dr.mode === 'lane' || dr.mode === 'phase' || dr.mode === 'poolw' || dr.mode === 'bend') {
     if (dr.snap !== snapshot()) { pushUndo(dr.snap); changed(); } else renderAll();
   } else if (dr.mode === 'connect') {
     const a = nodeById(D, dr.from), tgt = nodeAt(D, p, dr.from);
@@ -1297,12 +1413,15 @@ function renderPanel() {
       <label class="f">Type</label><select id="eType">${Object.entries(EDGE_TYPES).map(([k, v]) => `<option value="${k}" ${e.type === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
       <label class="f">Leaves source at</label><select id="eFrom">${Object.entries(SIDES).map(([k, v]) => `<option value="${k}" ${(e.fromSide || 'auto') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
       <label class="f">Enters target at</label><select id="eTo">${Object.entries(SIDES).map(([k, v]) => `<option value="${k}" ${(e.toSide || 'auto') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      <div class="hint" style="margin-top:8px">Drag the line to move its middle segment, e.g. when it lies on another line.</div>
+      ${e.bend ? '<div class="row" style="margin-top:8px"><button id="eStraight">Reset line position</button></div>' : ''}
       <div class="row" style="margin-top:12px"><button id="eRev">Reverse direction</button><button id="eDel" class="danger">Delete</button></div>` + help;
     $('#eLabel').oninput = panelInput(v => { e.label = v; });
     $('#eType').onchange = ev => mutate(() => { e.type = ev.target.value; });
-    $('#eFrom').onchange = ev => mutate(() => { e.fromSide = ev.target.value; });
-    $('#eTo').onchange = ev => mutate(() => { e.toSide = ev.target.value; });
-    $('#eRev').onclick = () => mutate(() => { [e.from, e.to] = [e.to, e.from]; [e.fromSide, e.toSide] = [e.toSide, e.fromSide]; });
+    $('#eFrom').onchange = ev => mutate(() => { e.fromSide = ev.target.value; delete e.bend; });
+    $('#eTo').onchange = ev => mutate(() => { e.toSide = ev.target.value; delete e.bend; });
+    if (e.bend) $('#eStraight').onclick = () => mutate(() => { delete e.bend; });
+    $('#eRev').onclick = () => mutate(() => { [e.from, e.to] = [e.to, e.from]; [e.fromSide, e.toSide] = [e.toSide, e.fromSide]; delete e.bend; });
     $('#eDel').onclick = deleteSelection;
     return;
   }
@@ -1611,6 +1730,7 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
   }
   // 8. line routing hints: decision branches leave on different sides, loops go around
   const level = id => lane.get(id) * 100 + row.get(id);
+  d.edges.forEach(e => { delete e.bend; });
   if (resetSides) d.edges.forEach(e => { e.fromSide = 'auto'; e.toSide = 'auto'; });
   const free = e => e.fromSide === 'auto' && e.toSide === 'auto';
   for (const n of nodes) {
@@ -1675,7 +1795,7 @@ function download(name, data, type) {
   const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
-const bundle = ds => JSON.stringify({ format: 'swimlane-editor', version: 1, exported: new Date().toISOString(), diagrams: ds.map(({ fileName, fileDirty, foreign, ...r }) => r) }, null, 2);
+const bundle = ds => JSON.stringify({ format: 'swimlane-editor', version: 1, exported: new Date().toISOString(), diagrams: ds.map(({ fileName, fileDirty, foreign, fileGroup, fileSource, ...r }) => r) }, null, 2);
 
 const DRAWIO_NODE = {
   task: 'rounded=1;whiteSpace=wrap;html=1;arcSize=15;',
@@ -1723,9 +1843,9 @@ function drawioDiagram(d) {
   const ids = new Set(d.nodes.map(n => n.id));
   for (const e of d.edges) {
     if (!ids.has(e.from) || !ids.has(e.to)) continue;
-    const [sa, sb] = edgeSides(d, e), A = ANCHOR[sa], B = ANCHOR[sb];
+    const [sa, sb] = routeInfo(d, e).sides, A = ANCHOR[sa], B = ANCHOR[sb];
     const style = DRAWIO_EDGE[e.type || 'flow'] + `strokeColor=#3A4450;fontSize=11;exitX=${A[0]};exitY=${A[1]};exitDx=0;exitDy=0;entryX=${B[0]};entryY=${B[1]};entryDx=0;entryDy=0;`;
-    cells.push(`<object id="${xa('e-' + e.id)}" label="${xa(htmlValue(e.label))}"${props({ swl: 'edge', swlType: e.type || 'flow', swlFromSide: e.fromSide || 'auto', swlToSide: e.toSide || 'auto' })}><mxCell style="${xa(style)}" edge="1" parent="1" source="${xa('n-' + e.from)}" target="${xa('n-' + e.to)}"><mxGeometry relative="1" as="geometry"/></mxCell></object>`);
+    cells.push(`<object id="${xa('e-' + e.id)}" label="${xa(htmlValue(e.label))}"${props({ swl: 'edge', swlType: e.type || 'flow', swlFromSide: e.fromSide || 'auto', swlToSide: e.toSide || 'auto', ...(e.bend ? { swlBend: e.bend } : {}) })}><mxCell style="${xa(style)}" edge="1" parent="1" source="${xa('n-' + e.from)}" target="${xa('n-' + e.to)}"><mxGeometry relative="1" as="geometry"/></mxCell></object>`);
   }
   return `<diagram id="${xa(d.id)}" name="${xa(d.title || 'Diagram')}"><mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0"><root>${cells.join('')}</root></mxGraphModel></diagram>`;
 }
@@ -1842,7 +1962,7 @@ function modelToDiagram(model, pageName) {
     const label = [c.text, ...children(c.id).map(x => x.text)].filter(Boolean).join(' ');
     const type = EDGE_TYPES[c.a.swlType] ? c.a.swlType : (c.st.endArrow === 'none' ? 'assoc' : c.st.dashed === '1' ? 'message' : 'flow');
     return { id: strip(c.id, 'e-'), from: idMap.get(c.source), to: idMap.get(c.target), label, type,
-      fromSide: c.a.swlFromSide || anchorSide(c.st.exitX, c.st.exitY), toSide: c.a.swlToSide || anchorSide(c.st.entryX, c.st.entryY) };
+      fromSide: c.a.swlFromSide || anchorSide(c.st.exitX, c.st.exitY), toSide: c.a.swlToSide || anchorSide(c.st.entryX, c.st.entryY), ...(c.a.swlBend ? { bend: +c.a.swlBend } : {}) };
   });
   const v = validate(d);
   v.nodes.forEach(n => clampNode(v, n));
@@ -1977,23 +2097,30 @@ function rememberHandle(id, h) { if (!h) return; handles.set(id, h); idb.set(id,
 const FS_API = typeof window.showSaveFilePicker === 'function';
 const DRAWIO_PICK = [{ description: 'draw.io diagram', accept: { 'application/vnd.jgraph.mxfile': ['.drawio'] } }];
 
+// Diagrams opened from one file with several diagrams (draw.io pages or a JSON list) share `fileGroup`
+// and are saved together, one page each. Without `fileGroup` a diagram is its own group (key = its id).
+function groupKey(d) { return d.fileGroup || d.id; }
+function groupOf(d) { return store.diagrams.filter(x => groupKey(x) === groupKey(d)); }
 async function saveFile(asNew) {
   commitEditor();
-  const d = D, xml = drawioFile([d]), suggested = (!asNew && d.fileName) || fileName(d.title) + '.drawio';
+  const d = D, key = groupKey(d), ds = groupOf(d), xml = drawioFile(ds);
+  // a diagram opened from JSON suggests the JSON file's name: purchasing.json -> purchasing.drawio
+  const src = ds.find(x => x.fileSource)?.fileSource;
+  const suggested = (!asNew && d.fileName) || (src ? src + '.drawio' : fileName(ds[0].title) + '.drawio');
+  const done = name => { for (const x of ds) { x.fileName = name; x.fileDirty = false; delete x.foreign; delete x.fileSource; } save(); renderAll(); };
+  const pages = ds.length > 1 ? ` (${ds.length} pages)` : '';
   if (!FS_API) {
-    download(suggested, xml, 'application/xml');
-    d.fileName = suggested; d.fileDirty = false; save(); renderAll();
-    toast('Downloaded ' + suggested + ' (this browser cannot write files directly)'); return;
+    download(suggested, xml, 'application/xml'); done(suggested);
+    toast('Downloaded ' + suggested + pages + ' (this browser cannot write files directly)'); return;
   }
   try {
-    let h = asNew ? null : await getHandle(d.id);
-    if (h && d.foreign && !confirm(`${d.fileName} was not created with this editor.\n\nOK: overwrite it (shapes and styles the editor does not know will be lost)\nCancel: save as a new file`)) h = null;
+    let h = asNew ? null : await getHandle(key);
+    if (h && ds.some(x => x.foreign) && !confirm(`${d.fileName} was not created with this editor.\n\nOK: overwrite it (shapes and styles the editor does not know will be lost)\nCancel: save as a new file`)) h = null;
     if (h && (await h.queryPermission({ mode: 'readwrite' })) !== 'granted' && (await h.requestPermission({ mode: 'readwrite' })) !== 'granted') h = null;
     if (!h) h = await window.showSaveFilePicker({ suggestedName: suggested, types: DRAWIO_PICK });
     const w = await h.createWritable(); await w.write(xml); await w.close();
-    rememberHandle(d.id, h);
-    d.fileName = h.name; d.fileDirty = false; delete d.foreign; save(); renderAll();
-    toast('Saved to ' + h.name);
+    rememberHandle(key, h); done(h.name);
+    toast('Saved to ' + h.name + pages);
   } catch (e) { if (e.name !== 'AbortError') toast('Save failed: ' + e.message); }
 }
 async function openFiles() {
@@ -2013,19 +2140,22 @@ async function openFile(file, handle) {
       if (!list) throw new Error('Not a Swimlane Editor file');
       list = list.map(validate);
     } else { list = await parseDrawio(text); fromDrawio = true; }
-    const single = fromDrawio && list.length === 1;
+    // a draw.io file stays linked to its diagrams; several diagrams from one file form a group saved together
+    const linked = fromDrawio, group = list.length > 1 ? uid() : null;
     let added = 0, replaced = 0, last = null;
     for (const d of list) {
-      d.fileName = single ? (handle ? handle.name : file.name) : null;
-      d.fileDirty = !single;
+      if (group) d.fileGroup = group; else delete d.fileGroup;
+      d.fileName = linked ? (handle ? handle.name : file.name) : null;
+      d.fileDirty = !linked;
+      if (linked) delete d.fileSource; else d.fileSource = file.name.replace(/(\.swimlane)?\.json$/i, '');
       const i = store.diagrams.findIndex(x => x.id === d.id);
       if (i >= 0) {
         if (confirm(`"${d.title}" is already in the editor.\n\nOK: replace it with the version from ${file.name}\nCancel: open as a copy`)) { store.diagrams[i] = d; replaced++; }
-        else { d.id = uid(); d.title += ' (copy)'; d.fileName = null; d.fileDirty = true; store.diagrams.push(d); added++; }
+        else { d.id = uid(); d.title += ' (copy)'; d.fileDirty = true; if (!group) d.fileName = null; store.diagrams.push(d); added++; }
       } else { store.diagrams.push(d); added++; }
-      if (single && handle && d.fileName) rememberHandle(d.id, handle);
       last = d;
     }
+    if (linked && handle && last && last.fileName) rememberHandle(groupKey(last), handle);
     if (last) { D = null; switchTo(last.id); }
     toast(list.length === 1 ? `Opened ${file.name}` : `Opened ${file.name}: ${added} new, ${replaced} replaced`);
   } catch (e) { toast('Could not open ' + file.name + ': ' + e.message); }
@@ -2078,6 +2208,7 @@ function harden(d) {
     if (!EDGE_TYPES[e.type]) e.type = 'flow';
     if (!SIDES[e.fromSide]) e.fromSide = 'auto';
     if (!SIDES[e.toSide]) e.toSide = 'auto';
+    if (e.bend !== undefined) { const b = Math.round(+e.bend); if (Number.isFinite(b) && b && Math.abs(b) <= 20000) e.bend = b; else delete e.bend; }
   });
   return d;
 }
