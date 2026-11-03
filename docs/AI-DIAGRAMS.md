@@ -12,6 +12,8 @@ Give this guide to an AI, for example Claude, together with a description of you
 
 Tip: after changes, **Arrange** (key `L`) lays the diagram out again. `Ctrl+Z` takes it back.
 
+Several processes at once, for example a main process and its subprocesses: ask for several entries in `diagrams`. They open as pages of one file, and **Save** writes them together into one `.drawio` file.
+
 ---
 
 ## Instructions for the AI
@@ -59,11 +61,11 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 | Field | Required | Meaning |
 |---|---|---|
 | `id` | yes | Unique, short: letters, digits, `-`, `_`, `.`, `:` |
-| `type` | yes | See the table below |
+| `type` | yes | Only a value from the table below. An element with any other type is left out, together with its connections. |
 | `lane` | yes | Name of the lane, exactly as in `lanes` |
 | `phase` | no | Name of the phase, exactly as in `phases` |
 | `text` | yes | Short: tasks as "verb + object", about 5 words at most |
-| `color` | no | Highlight: `#FBE9E7` red, `#FFF5DD` yellow, `#E6F5EA` green, `#EAF2FB` blue |
+| `color` | no | Highlight: `#FBE9E7` red, `#FFF5DD` yellow, `#E6F5EA` green, `#EAF2FB` blue; also `#F1E8FA` purple, `#F2F4F6` grey, `#FFFFFF` white |
 
 | `type` | Meaning |
 |---|---|
@@ -99,6 +101,7 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 
 - [ ] Every `id` is unique, and every `from` / `to` exists as an element
 - [ ] Every `lane` and `phase` of an element is spelled exactly as in `lanes` / `phases`
+- [ ] Every `type` is one from the table
 - [ ] Exactly one `start`, at least one `end`
 - [ ] Valid JSON: no comments, no trailing commas
 
@@ -106,6 +109,8 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 
 ## Advanced: own positions
 
-If the AI gives `x`, `y` (and optionally `w`, `h`) for **all** elements, the editor keeps those positions as they are. The example `examples/leave-request.json` shows the format. Grid: column centre `158 + column × 170`, lane centre `top + height / 2`; content starts at x = 68.
+If the AI gives `x`, `y` (and optionally `w`, `h`) for **all** elements, the editor keeps those positions as they are. If even one element has no `x` or `y`, the editor lays out the whole diagram itself. The example `examples/leave-request.json` shows the format.
+
+`x` and `y` are the **top left corner** of the element, not its centre. Grid: column centre `158 + column × 170`, lane centre `top + height / 2`, so `x = column centre − w / 2` and `y = lane centre − h / 2`. Example: a start element (`w` 36) in column 0 has `x` = 158 − 18 = 140. Content starts at x = 68.
 
 With the field `"col"` (0, 1, 2, …) on an element, the AI can set just the column and leave the rest to the editor.
