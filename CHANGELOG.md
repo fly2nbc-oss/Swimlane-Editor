@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.3.2] – 2026-11-03
+
+### Changed
+
+- **Simpler Export menu**: no group headings; four entries: PDF on one page, PDF on several pages (the current file), "SVG image (only this diagram)" and "JSON backup (all diagrams)". The PDF exports of all files in the editor are gone.
+
 ## [1.3.1] – 2026-11-03
 
 ### Fixed
