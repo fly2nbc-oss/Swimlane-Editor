@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.3.1] – 2026-11-03
+
+### Fixed
+
+- **Release notes of 1.3.0**: "Diagrams belong to their file" said a diagram with the same id *or title* used to ask a question. Only the same id did; a diagram from another file with the same id now opens next to it. Diagrams with only the same title always opened without a question. No change in the app.
+
 ## [1.3.0] – 2026-11-03
 
 ### Added
@@ -16,7 +22,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ### Changed
 
-- **Diagrams belong to their file**: a diagram with the same id or title as one from another file opens next to it, without a question; it gets its own id. Only when the same file is already open, one question per file: "Reload" replaces its diagrams in place (with a note when they have unsaved changes), "Open as copy" opens it again, not linked to the file. A file with the same name in another folder counts as another file when the editor knows both files.
+- **Diagrams belong to their file**: a diagram with the same id as one from another file (for example the same diagram in two versions of a file) opens next to it, without a question; it gets its own id. Only when the same file is already open, one question per file: "Reload" replaces its diagrams in place (with a note when they have unsaved changes), "Open as copy" opens it again, not linked to the file. A file with the same name in another folder counts as another file when the editor knows both files.
 
 ## [1.2.1] – 2026-11-03
 
