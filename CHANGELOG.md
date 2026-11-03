@@ -7,6 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.3.0] – 2026-11-03
+
+### Added
+
+- **Collapse a file in the list**: ▾/▸ next to a file name hides or shows its diagrams; a collapsed file shows how many diagrams it has and is highlighted when the current diagram is in it. The state is kept in the browser.
+- **Full names on hover**: the tooltip of a file and of a diagram in the list shows the full name (and the diagram's version), also when the list cuts it off.
+
+### Changed
+
+- **Diagrams belong to their file**: a diagram with the same id or title as one from another file opens next to it, without a question; it gets its own id. Only when the same file is already open, one question per file: "Reload" replaces its diagrams in place (with a note when they have unsaved changes), "Open as copy" opens it again, not linked to the file. A file with the same name in another folder counts as another file when the editor knows both files.
+
 ## [1.2.1] – 2026-11-03
 
 ### Changed

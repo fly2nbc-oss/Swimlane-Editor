@@ -84,6 +84,9 @@ h3:first-child{margin-top:0}
 #diagramList li.file.loose{color:var(--muted);cursor:default}
 #diagramList li.file .fclose{border:0;background:none;padding:0 5px;color:var(--muted);font-size:14px;line-height:1}
 #diagramList li.file .fclose:hover{color:var(--danger);background:var(--hover)}
+#diagramList li.file .ftoggle{border:0;background:none;padding:0 2px;margin-left:-6px;width:16px;color:var(--muted);font-size:11px;line-height:1}
+#diagramList li.file .ftoggle:hover{color:var(--text);background:var(--hover)}
+#diagramList li.file.active{background:var(--accent-weak)}
 .row{display:flex;gap:6px;flex-wrap:wrap}
 .row.icons{gap:3px}
 .ibtn{padding:3px 4px;line-height:0;display:inline-flex;align-items:center;justify-content:center}
@@ -311,7 +314,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.2.1'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.3.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -891,19 +894,29 @@ const groupFileName = ds => ds.find(x => x.fileName)?.fileName || (ds.find(x => 
 const FILE_ICON = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 1.5h6l3 3v10h-9z"/><path d="M9.5 1.5v3h3"/></svg>';
 function renderList() {
   const { files, loose } = listGroups();
-  const page = d => `<li class="page${D && d.id === D.id ? ' active' : ''}" tabindex="0" data-id="${esc(d.id)}" ${D && d.id === D.id ? 'aria-current="true"' : ''}><span>${esc(d.title || 'Untitled')}</span><small>v${esc(d.version || '')}</small></li>`;
+  const page = d => `<li class="page${D && d.id === D.id ? ' active' : ''}" tabindex="0" data-id="${esc(d.id)}" title="${esc(d.title || 'Untitled')}${d.version ? ' (v' + esc(d.version) + ')' : ''}"${D && d.id === D.id ? 'aria-current="true"' : ''}><span>${esc(d.title || 'Untitled')}</span><small>v${esc(d.version || '')}</small></li>`;
   let s = '';
+  const collapsed = new Set(store.settings.collapsed = (store.settings.collapsed || []).filter(k => files.some(f => f.key === k)));
   for (const { key, ds } of files) {
-    const name = groupFileName(ds), saved = ds.some(x => x.fileName);
+    const name = groupFileName(ds), saved = ds.some(x => x.fileName), shut = collapsed.has(key), here = D && ds.includes(D);
     const [state, cls, tip] = !saved ? ['●', 'dirty', 'Not saved yet: Save creates ' + name] : ds.some(x => x.fileDirty) ? ['●', 'dirty', 'Unsaved changes: Save writes ' + name] : ['✓', '', 'Saved to ' + name];
-    s += `<li class="file" data-key="${esc(key)}" title="${esc(tip)}${ds.length > 1 ? ` (${ds.length} pages)` : ''}">${FILE_ICON}<span class="fname">${esc(name)}</span><span class="fstate ${cls}">${state}</span>` +
-      `<button class="fclose" data-close="${esc(key)}" title="Close ${esc(name)}: remove its diagrams from the editor (the file stays)" aria-label="Close ${esc(name)}">&times;</button></li>` + ds.map(page).join('');
+    s += `<li class="file${shut && here ? ' active' : ''}" data-key="${esc(key)}" title="${esc(name)}&#10;${esc(tip)}${ds.length > 1 ? ` (${ds.length} pages)` : ''}">` +
+      `<button class="ftoggle" data-toggle="${esc(key)}" aria-expanded="${!shut}" title="${shut ? 'Show' : 'Hide'} the diagrams of ${esc(name)}" aria-label="${shut ? 'Expand' : 'Collapse'} ${esc(name)}">${shut ? '▸' : '▾'}</button>` +
+      `${FILE_ICON}<span class="fname">${esc(name)}</span>${shut ? `<small>${ds.length}</small>` : ''}<span class="fstate ${cls}">${state}</span>` +
+      `<button class="fclose" data-close="${esc(key)}" title="Close ${esc(name)}: remove its diagrams from the editor (the file stays)" aria-label="Close ${esc(name)}">&times;</button></li>` + (shut ? '' : ds.map(page).join(''));
   }
   if (loose.length) s += `<li class="file loose" title="Each of these is saved as its own file">Not saved to a file</li>` + loose.map(page).join('');
   $('#diagramList').innerHTML = s;
 }
 $('#diagramList').addEventListener('click', ev => {
   const c = ev.target.closest('[data-close]'); if (c) { ev.stopPropagation(); closeFile(c.dataset.close); return; }
+  const t = ev.target.closest('[data-toggle]');
+  if (t) { // collapse or expand a file's diagrams; remembered with the settings
+    ev.stopPropagation();
+    const k = t.dataset.toggle, set = new Set(store.settings.collapsed || []);
+    set.has(k) ? set.delete(k) : set.add(k); store.settings.collapsed = [...set];
+    save(); renderList(); $(`#diagramList [data-toggle="${CSS.escape(k)}"]`)?.focus(); return;
+  }
   const li = ev.target.closest('li[data-id]'); if (li) { switchTo(li.dataset.id); return; }
   const f = ev.target.closest('li.file[data-key]'); // the file name: go to its first diagram unless one of them is open
   if (f && (!D || groupKey(D) !== f.dataset.key)) { const d = store.diagrams.find(x => groupKey(x) === f.dataset.key); if (d) switchTo(d.id); }
@@ -2122,22 +2135,43 @@ async function openFile(file, handle) {
     } else { list = await parseDrawio(text); fromDrawio = true; }
     // a draw.io file stays linked to its diagrams; several diagrams from one file form a group saved together
     const linked = fromDrawio, group = list.length > 1 ? uid() : null;
-    let added = 0, replaced = 0, last = null;
+    const fname = linked ? (handle ? handle.name : file.name) : null, source = linked ? null : file.name.replace(/(\.swimlane)?\.json$/i, '');
     for (const d of list) {
       if (group) d.fileGroup = group; else delete d.fileGroup;
-      d.fileName = linked ? (handle ? handle.name : file.name) : null;
-      d.fileDirty = !linked;
-      if (linked) delete d.fileSource; else d.fileSource = file.name.replace(/(\.swimlane)?\.json$/i, '');
-      const i = store.diagrams.findIndex(x => x.id === d.id);
-      if (i >= 0) {
-        if (await ask('Diagram already open', `"${d.title}" is already in the editor. Replace it with the version from ${file.name}, or open the file as a copy?`, { ok: 'Replace', cancel: 'Open as copy' })) { store.diagrams[i] = d; replaced++; }
-        else { d.id = uid(); d.title += ' (copy)'; d.fileDirty = true; if (!group) d.fileName = null; store.diagrams.push(d); added++; }
-      } else { store.diagrams.push(d); added++; }
-      last = d;
+      d.fileName = fname; d.fileDirty = !linked;
+      if (linked) delete d.fileSource; else d.fileSource = source;
     }
-    if (linked && handle && last && last.fileName) rememberHandle(groupKey(last), handle);
+    // Diagrams belong to their file: the same diagram (same id or title) in another file opens next to it.
+    // Only when this very file is open already, ask whether to reload it or to open it a second time.
+    const sameFile = x => linked ? x.fileName === fname : !x.fileName && x.fileSource === source;
+    const openKeys = new Set(store.diagrams.filter(sameFile).map(groupKey));
+    // same name in another folder is another file (when both handles are known)
+    if (handle) for (const k of [...openKeys]) { const h = await getHandle(k); if (h && !await h.isSameEntry(handle).catch(() => true)) openKeys.delete(k); }
+    let reload = false, at = store.diagrams.length;
+    if (openKeys.size) {
+      const old = store.diagrams.filter(x => openKeys.has(groupKey(x)));
+      reload = await ask('File already open', `${file.name} is already open in the editor. Reload it from the file, or open it a second time as a copy?` + unsavedNote(old).replace('It has', 'The open version has'), { ok: 'Reload', cancel: 'Open as copy' });
+      if (reload) {
+        // the file's diagrams are replaced in place, in the file's position in the list
+        at = store.diagrams.findIndex(x => openKeys.has(groupKey(x)));
+        commitEditor();
+        if (D && openKeys.has(groupKey(D))) D = null;
+        store.diagrams = store.diagrams.filter(x => !openKeys.has(groupKey(x)));
+        for (const k of openKeys) { handles.delete(k); idb.del(k).catch(() => {}); }
+      } else {
+        // a copy is not linked to the file: Save asks for a new name
+        const g = list.length > 1 ? uid() : null;
+        for (const d of list) { d.title += ' (copy)'; d.fileDirty = true; d.fileName = null; d.fileSource = (source || fname.replace(/\.(drawio|xml)$/i, '')) + '-copy'; if (g) d.fileGroup = g; }
+      }
+    }
+    // the same diagram may be open from another file: this one gets its own id
+    const ids = new Set(store.diagrams.map(x => x.id));
+    for (const d of list) { if (ids.has(d.id)) d.id = uid(); ids.add(d.id); }
+    store.diagrams.splice(Math.min(at, store.diagrams.length), 0, ...list);
+    const last = list[list.length - 1];
+    if (last && last.fileName && handle) rememberHandle(groupKey(last), handle);
     if (last) { D = null; switchTo(last.id); }
-    toast(list.length === 1 ? `Opened ${file.name}` : `Opened ${file.name}: ${added} new, ${replaced} replaced`);
+    toast(`${reload ? 'Reloaded' : 'Opened'} ${file.name}` + (list.length > 1 ? ` (${list.length} pages)` : ''));
   } catch (e) { toast('Could not open ' + file.name + ': ' + e.message); }
 }
 $('#bOpen').onclick = openFiles;
