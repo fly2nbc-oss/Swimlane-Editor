@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.2.1] – 2026-11-03
+
+### Changed
+
+- **Toolbar icons**: Open, Save, Export, Fit and Arrange show an icon next to their label; zoom in and out are magnifier icons. In a narrow window (below 1000 px) these buttons show only the icon, the tooltip keeps the name.
+
 ## [1.2.0] – 2026-11-02
 
 ### Added

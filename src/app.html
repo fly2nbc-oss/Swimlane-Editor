@@ -41,6 +41,7 @@ header .spacer{flex:1}
 svg.i{width:16px;height:16px;display:block}
 .listbar{align-items:center}
 .listbar .sep{width:1px;height:20px;background:var(--border);margin:0 4px}
+button.ti{display:inline-flex;align-items:center;gap:6px}
 button.icon:has(svg.i){display:inline-flex;align-items:center;justify-content:center;padding:5px 7px}
 .split{display:inline-flex}
 .split>button:first-child{border-top-right-radius:0;border-bottom-right-radius:0}
@@ -156,6 +157,7 @@ details.tips summary{font-size:11px;text-transform:uppercase;letter-spacing:.06e
   #app.hide-right{grid-template-columns:200px 1fr 0}
   header .brand .name{display:none}
 }
+@media (max-width:1000px){header button.ti .lbl{display:none} header button.ti{padding:5px 7px}}
 @media (max-width:900px){header .sep,#zoomLabel{display:none} header{gap:3px;padding:0 6px}}
 @media (prefers-reduced-motion:reduce){#app,#toast,#canvas .port{transition:none}}
 kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:0 4px;font-size:11px}
@@ -166,9 +168,9 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
   <header>
     <button class="toggle on" id="bLeft" title="Show or hide the left sidebar (Alt+1 or F10)" aria-label="Left sidebar"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><rect x="2.5" y="3.5" width="5" height="13" rx="1" fill="currentColor" fill-opacity=".35"/></svg></button>
     <span class="brand" style="margin-left:6px"><svg class="appicon" viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0a5ea8"/><rect x="4" y="6" width="24" height="20" rx="2" fill="#ffffff"/><rect x="4" y="6" width="4.5" height="20" rx="2" fill="#bcd4ec"/><path d="M8.5 16H28" stroke="#0a5ea8" stroke-width="1"/><rect x="10.5" y="8.5" width="7" height="5" rx="1.2" fill="#0a5ea8"/><rect x="18.5" y="18.5" width="7" height="5" rx="1.2" fill="#e39b2d"/><path d="M17.5 11H22V16.2" fill="none" stroke="#0a5ea8" stroke-width="1.4"/><path d="M19.9 15.8L22 18.5L24.1 15.8Z" fill="#0a5ea8"/></svg><span class="name">Swimlane Editor</span></span>
-    <button id="bOpen" title="Open a .drawio or .json file (Ctrl+O)">Open&hellip;</button>
+    <button id="bOpen" class="ti" title="Open a .drawio or .json file (Ctrl+O)" aria-label="Open"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 12.5v-9a1 1 0 0 1 1-1h3.6l1.5 1.8h5.9a1 1 0 0 1 1 1v7.2a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/><path d="M1.5 6.5h13"/></svg><span class="lbl">Open&hellip;</span></button>
     <div class="split">
-      <button id="bSave" class="primary" title="Save as .drawio file (Ctrl+S)">Save</button>
+      <button id="bSave" class="primary ti" title="Save as .drawio file (Ctrl+S)" aria-label="Save"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 2.5h9l2 2v9h-11z"/><path d="M5 2.5V6h5V2.5"/><path d="M5 13.5V9.5h6v4"/></svg><span class="lbl">Save</span></button>
       <div class="menu" id="saveMenu">
         <button id="bSaveMenu" class="primary" title="More save options" aria-label="More save options" aria-haspopup="menu">&#9662;</button>
         <div class="items left" role="menu">
@@ -177,7 +179,7 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
       </div>
     </div>
     <div class="menu" id="exportMenu">
-      <button id="bExport" title="PDF, SVG, draw.io and JSON" aria-haspopup="menu">Export &#9662;</button>
+      <button id="bExport" class="ti" title="PDF, SVG, draw.io and JSON" aria-label="Export" aria-haspopup="menu"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 10V2M5 5l3-3 3 3"/><path d="M3 8.5v5h10v-5"/></svg><span class="lbl">Export</span> &#9662;</button>
       <div class="items left" role="menu">
         <div class="grp" id="expFileGrp">This file</div>
         <button data-exp="pdf">PDF &ndash; each diagram on one page</button>
@@ -194,11 +196,11 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
     <button class="icon" id="bUndo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5L2.5 6.5L5.5 9.5"/><path d="M2.5 6.5H10a3.5 3.5 0 0 1 0 7H7"/></svg></button>
     <button class="icon" id="bRedo" title="Redo (Ctrl+Y)" aria-label="Redo"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 3.5L13.5 6.5L10.5 9.5"/><path d="M13.5 6.5H6a3.5 3.5 0 0 0 0 7H9"/></svg></button>
     <span class="sep"></span>
-    <button class="icon" id="bZoomOut" title="Zoom out (&minus;)" aria-label="Zoom out">&#8722;</button>
+    <button class="icon" id="bZoomOut" title="Zoom out (&minus;)" aria-label="Zoom out"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.8"/><path d="M10.5 10.5L14 14M4.8 7h4.4"/></svg></button>
     <span id="zoomLabel">100%</span>
-    <button class="icon" id="bZoomIn" title="Zoom in (+)" aria-label="Zoom in">+</button>
-    <button id="bFit" title="Fit to window (Ctrl+0)">Fit</button>
-    <button id="bArrange" title="Arrange all elements automatically (L)">Arrange</button>
+    <button class="icon" id="bZoomIn" title="Zoom in (+)" aria-label="Zoom in"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.8"/><path d="M10.5 10.5L14 14M4.8 7h4.4M7 4.8v4.4"/></svg></button>
+    <button id="bFit" class="ti" title="Fit to window (Ctrl+0)" aria-label="Fit to window"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 5.5V2h3.5M10.5 2H14v3.5M14 10.5V14h-3.5M5.5 14H2v-3.5"/><rect x="5.5" y="5.5" width="5" height="5" rx=".8"/></svg><span class="lbl">Fit</span></button>
+    <button id="bArrange" class="ti" title="Arrange all elements automatically (L)" aria-label="Arrange"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="2.5" width="4.5" height="3.5" rx=".8"/><rect x="10" y="2.5" width="4.5" height="3.5" rx=".8"/><rect x="10" y="10" width="4.5" height="3.5" rx=".8"/><path d="M6 4.25h4M12.25 6v4"/></svg><span class="lbl">Arrange</span></button>
     <span class="spacer"></span>
     <span id="saveState"></span>
     <button id="bHelp" class="icon" title="Keyboard shortcuts (H)" aria-label="Keyboard shortcuts"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.75c-.5.2-.8.6-.8 1.1v.4"/><circle cx="8" cy="11.6" r=".5" fill="currentColor"/></svg></button>
@@ -309,7 +311,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.2.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.2.1'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
