@@ -35,6 +35,7 @@ Then open `swimlane-editor.html` in Chrome or Edge. Commit `src/app.html` and `s
 | `vendor/` | jsPDF 2.5.2 and svg2pdf.js 2.2.4 (MIT), inlined at `<!--LIBS-->` |
 | `swimlane-editor.html` | **Build output**, the file users open. Never edit by hand. |
 | `docs/icon.svg` | App icon; the same drawing is inlined in `src/app.html` (favicon, toolbar) |
+| `packaging/windows/` | `install.cmd` / `uninstall.cmd` (per user: copy to `%LOCALAPPDATA%\Programs`, Start menu entry with `msedge --app`, entry in Settings > Apps) and `swimlane-editor.ico` rendered from `docs/icon.svg`; the release job zips them with the HTML file |
 | `docs/AI-DIAGRAMS.md`, `docs/examples/` | JSON spec for AI-generated diagrams; examples with and without coordinates |
 | `screenshots/` | README screenshot, made from `docs/examples/leave-request-simple.json` |
 | `.github/` | CI, Dependabot, issue forms |
@@ -83,6 +84,8 @@ No test framework in the repo. Playwright (Python, `channel="msedge"` uses the i
 3. Check the draft, then `gh release edit vx.y.z --draft=false --latest`. Releases are immutable once published.
 
 ## Gotchas
+
+- `packaging/windows/*.cmd` are batch + PowerShell in one file: the batch part runs the rest with `Invoke-Expression`, so no execution policy applies; keep them ASCII and CRLF (`.gitattributes`). `uninstall.cmd` deletes itself: its batch part is one block ending in `(goto) 2>nul & cmd /c exit N`, because `exit /b` would read the deleted file. If PowerShell is locked down (constrained language), `install.cmd` writes a `.url` shortcut instead of the `.lnk`.
 
 - `build.sh` on Windows: Git Bash; it falls back from `python3` (often the Store alias) to `python` and writes LF.
 - Pushing changes to `.github/workflows/` needs a token with the `workflow` scope (`gh auth refresh -s workflow`; push with `gh` as credential helper).

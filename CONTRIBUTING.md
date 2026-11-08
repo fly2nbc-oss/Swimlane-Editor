@@ -30,6 +30,7 @@ Then open `swimlane-editor.html` in Chrome or Edge.
 | `build.sh` | Writes `swimlane-editor.html` = `src/app.html` with the vendor scripts inlined at `<!--LIBS-->` |
 | `swimlane-editor.html` | **Build output**, the file users open. Never edit it by hand. |
 | `docs/` | Spec for generating diagrams with AI, and example diagrams |
+| `packaging/windows/` | `install.cmd`, `uninstall.cmd` and the icon for the Windows installer ZIP |
 
 [`AGENTS.md`](./AGENTS.md) describes the architecture in more detail: the data model, the main parts of `src/app.html`, and the working rules.
 
@@ -63,7 +64,7 @@ There is no test framework in the repository. What has proven itself is a short 
 
 - **Build** – runs `./build.sh` and fails when `swimlane-editor.html` differs from the committed one, or when `src/app.html` contains a network URL.
 - **Lint workflows** – `actionlint` and `zizmor` check the workflow files.
-- **Release** (`v*` tags only) – checks the tag against `APP_VERSION` and `CHANGELOG.md`, attests where `swimlane-editor.html` was built, and drafts a GitHub release with it.
+- **Release** (`v*` tags only) – checks the tag against `APP_VERSION` and `CHANGELOG.md`, zips `packaging/windows/` with `swimlane-editor.html` into the Windows installer, attests where the files were built, and drafts a GitHub release with them.
 
 Dependabot proposes updates of the pinned actions once a month.
 

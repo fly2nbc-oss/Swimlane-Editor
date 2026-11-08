@@ -2247,6 +2247,17 @@ $('#logoInput').onchange = ev => {
 };
 
 /* ================= start ================= */
+// Opened as an app window (the Windows Start menu entry starts Edge with --app): fill the
+// screen once per window. Edge ignores the shortcut's "maximized" when it is already running.
+try {
+  if (matchMedia('(display-mode: standalone)').matches && !sessionStorage.getItem('swimlane-editor.sized')) {
+    sessionStorage.setItem('swimlane-editor.sized', '1');
+    if (outerWidth < screen.availWidth || outerHeight < screen.availHeight) {
+      moveTo(screen.availLeft || 0, screen.availTop || 0);
+      resizeTo(screen.availWidth, screen.availHeight);
+    }
+  }
+} catch (e) { /* not allowed here: keep the window as it is */ }
 load();
 applySidebars();
 // tips in the left sidebar: open until the user closes them once

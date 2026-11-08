@@ -25,6 +25,8 @@ Swimlane Editor shows who does what, in which order: roles as lanes, steps and d
 
 Download `swimlane-editor.html` from [Releases](https://github.com/fly2nbc-oss/Swimlane-Editor/releases) and open it in Chrome or Edge. Nothing to install.
 
+On Windows you can add it to the Start menu instead: unpack `swimlane-editor_<version>_windows-installer.zip` and run `install.cmd`. It installs for the current user without admin rights, opens the editor in its own Edge window and adds an entry to *Settings > Apps* to remove it. Running `install.cmd` of a newer version updates it. The script is not signed, so Windows may ask whether to run it (*More info > Run anyway*).
+
 | Action | How |
 |---|---|
 | Add element | Drag a tile onto a lane, or double-click an empty spot |

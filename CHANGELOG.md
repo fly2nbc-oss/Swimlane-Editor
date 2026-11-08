@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+### Added
+
+- **Windows installer**: the release has `swimlane-editor_<version>_windows-installer.zip`. Its `install.cmd` copies the editor for the current user (no admin rights, no .exe), adds *Swimlane Editor* to the Start menu, opening in its own Edge window, and to *Settings > Apps*; `uninstall.cmd` removes it again.
+- **Full size as an app window**: opened as an app window, as the Start menu entry does, the editor fills the screen once; Edge ignores the shortcut's "maximized" while it is already running.
+
 ## [1.3.2] – 2026-11-03
 
 ### Changed

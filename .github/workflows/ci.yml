@@ -2,7 +2,8 @@ name: CI
 
 # Pushes and pull requests: rebuild swimlane-editor.html and check that the
 # committed file matches the source. A `v*` tag also drafts a GitHub release with
-# the HTML file attached; the tag needs a matching section in CHANGELOG.md.
+# the HTML file and a Windows installer ZIP attached; the tag needs a matching
+# section in CHANGELOG.md.
 #
 # Every action is pinned to a commit, its version as a comment: a tag that is moved
 # can't bring other code into this workflow. Dependabot (.github/dependabot.yml)
@@ -103,17 +104,28 @@ jobs:
 
           ### Download
 
-          `swimlane-editor.html` – open it in Chrome or Edge. Nothing to install; it works offline.
+          | File | For |
+          |---|---|
+          | `swimlane-editor.html` | Chrome or Edge: open it, nothing to install; works offline |
+          | `swimlane-editor_@VERSION@_windows-installer.zip` | Windows: unpack, run `install.cmd`; adds *Swimlane Editor* to the Start menu for the current user, no admin rights |
 
-          Built by this repository's CI: `gh attestation verify swimlane-editor.html --repo fly2nbc-oss/Swimlane-Editor` checks that.
+          Built by this repository's CI: `gh attestation verify <file> --repo fly2nbc-oss/Swimlane-Editor` checks that.
           EOF
+          sed -i "s/@VERSION@/$version/" notes.md
           mkdir release
           cp swimlane-editor.html release/
+          # Windows installer: one folder with the batch scripts, the app and the notices.
+          # .gitattributes checks the .cmd files out with CRLF, as cmd.exe needs.
+          pkg="$RUNNER_TEMP/Swimlane Editor"
+          mkdir -p "$pkg"
+          cp packaging/windows/install.cmd packaging/windows/uninstall.cmd packaging/windows/swimlane-editor.ico \
+             swimlane-editor.html LICENSE NOTICE THIRD_PARTY.md "$pkg/"
+          (cd "$RUNNER_TEMP" && zip -X -r "$GITHUB_WORKSPACE/release/swimlane-editor_${version}_windows-installer.zip" "Swimlane Editor")
           (cd release && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: release/swimlane-editor.html
+          subject-path: release/*
       - name: Draft the release
         env:
           GH_TOKEN: ${{ github.token }}

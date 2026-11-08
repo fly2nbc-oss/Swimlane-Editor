@@ -2,8 +2,9 @@
 # platform. build.sh writes LF too, so CI can compare the build output byte by byte.
 * text=auto eol=lf
 
-# Scripts must stay LF regardless of platform.
+# Scripts must stay LF regardless of platform; Windows batch files need CRLF.
 *.sh    text eol=lf
+*.cmd   text eol=crlf
 
 # The build output and the minified libraries are compared, never merged.
 swimlane-editor.html  -diff linguist-generated
