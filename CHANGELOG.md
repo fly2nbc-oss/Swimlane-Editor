@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.4.0] – 2026-11-08
+
 ### Added
 
 - **Windows installer**: the release has `swimlane-editor_<version>_windows-installer.zip`. Its `install.cmd` copies the editor for the current user (no admin rights, no .exe), adds *Swimlane Editor* to the Start menu, opening in its own Edge window, and to *Settings > Apps*; `uninstall.cmd` removes it again.
