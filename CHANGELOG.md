@@ -7,6 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+### Added
+
+- **AI guide in the help**: the help (`H`) has "Download AI guide (.md)": the instructions for writing diagrams with an AI, ready to hand to the AI together with a description of the process. The guide now ends with a complete example, so this one file is enough.
+
+### Changed
+
+- **Help dialog** is titled "Help" instead of "Keyboard shortcuts"; the toolbar button says "Help and keyboard shortcuts (H)".
+
 ## [1.4.0] – 2026-11-08
 
 ### Added

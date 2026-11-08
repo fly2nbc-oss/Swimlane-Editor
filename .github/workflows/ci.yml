@@ -12,7 +12,13 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths-ignore: ["**.md", "docs/**"]
+    # Docs don't need a build, except the AI guide and its example: build.sh inlines them.
+    paths:
+      - "**"
+      - "!**.md"
+      - "!docs/**"
+      - "docs/AI-DIAGRAMS.md"
+      - "docs/examples/leave-request-simple.json"
   pull_request:
   workflow_dispatch:
 

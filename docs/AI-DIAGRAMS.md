@@ -1,11 +1,11 @@
 # Creating diagrams with AI
 
-Give this guide to an AI, for example Claude, together with a description of your process. The AI writes a JSON file. You open it in Swimlane Editor with **Open…**, and the editor lays everything out. Then you **Save** it as `.drawio`.
+Give this guide to an AI, for example Claude, together with a description of your process. Swimlane Editor offers it for download in its help (`H`). The AI writes a JSON file. You open it in Swimlane Editor with **Open…**, and the editor lays everything out. Then you **Save** it as `.drawio`.
 
 ## How to do it
 
 1. Describe your process in short notes: roles, steps, decisions, phases.
-2. Give the AI this file **and** the example `examples/leave-request-simple.json`.
+2. Give the AI this file. It ends with a complete example.
 3. Ask: "Turn this into a file for Swimlane Editor, following this guide."
 4. Save the answer as `.json`, for example `purchasing.json`.
 5. In the editor: **Open…**, choose the file, check it, adjust with the mouse, **Save**.
@@ -105,11 +105,52 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 - [ ] Exactly one `start`, at least one `end`
 - [ ] Valid JSON: no comments, no trailing commas
 
+### Complete example
+
+A leave request with three roles, three phases, a decision with a loop back and a form attached to a step:
+
+```json
+{
+  "format": "swimlane-editor",
+  "version": 1,
+  "diagrams": [
+    {
+      "id": "leave-request",
+      "title": "Leave request",
+      "owner": "HR",
+      "description": "From the request to the entry in the HR system.",
+      "lanes": ["Employee", "Team lead", "HR department"],
+      "phases": ["Request", "Review", "Completion"],
+      "nodes": [
+        { "id": "start",   "type": "start",    "lane": "Employee",      "phase": "Request",    "text": "Time off needed" },
+        { "id": "submit",  "type": "task",     "lane": "Employee",      "phase": "Request",    "text": "Submit request" },
+        { "id": "form",    "type": "document", "lane": "Employee",                             "text": "Leave request form" },
+        { "id": "review",  "type": "task",     "lane": "Team lead",     "phase": "Review",     "text": "Review request" },
+        { "id": "ok",      "type": "decision", "lane": "Team lead",     "phase": "Review",     "text": "Approved?" },
+        { "id": "adjust",  "type": "task",     "lane": "Employee",      "phase": "Review",     "text": "Adjust request" },
+        { "id": "record",  "type": "task",     "lane": "HR department", "phase": "Completion", "text": "Record leave in HR system" },
+        { "id": "end",     "type": "end",      "lane": "Employee",      "phase": "Completion", "text": "Leave confirmed" }
+      ],
+      "edges": [
+        { "from": "start",  "to": "submit" },
+        { "from": "submit", "to": "review" },
+        { "from": "submit", "to": "form",   "type": "assoc" },
+        { "from": "review", "to": "ok" },
+        { "from": "ok",     "to": "record", "label": "Yes" },
+        { "from": "ok",     "to": "adjust", "label": "No" },
+        { "from": "adjust", "to": "review" },
+        { "from": "record", "to": "end" }
+      ]
+    }
+  ]
+}
+```
+
 ---
 
 ## Advanced: own positions
 
-If the AI gives `x`, `y` (and optionally `w`, `h`) for **all** elements, the editor keeps those positions as they are. If even one element has no `x` or `y`, the editor lays out the whole diagram itself. The example `examples/leave-request.json` shows the format.
+If the AI gives `x`, `y` (and optionally `w`, `h`) for **all** elements, the editor keeps those positions as they are. If even one element has no `x` or `y`, the editor lays out the whole diagram itself. The example `docs/examples/leave-request.json` in the Swimlane Editor repository shows the format.
 
 `x` and `y` are the **top left corner** of the element, not its centre. Grid: column centre `158 + column × 170`, lane centre `top + height / 2`, so `x = column centre − w / 2` and `y = lane centre − h / 2`. Example: a start element (`w` 36) in column 0 has `x` = 158 − 18 = 140. Content starts at x = 68.
 

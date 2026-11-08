@@ -27,7 +27,7 @@ Then open `swimlane-editor.html` in Chrome or Edge.
 |---|---|
 | `src/app.html` | **The source.** All HTML, CSS and JavaScript in one file. Edit this. |
 | `vendor/` | jsPDF 2.5.2 and svg2pdf.js 2.2.4 (MIT), inlined at build time |
-| `build.sh` | Writes `swimlane-editor.html` = `src/app.html` with the vendor scripts inlined at `<!--LIBS-->` |
+| `build.sh` | Writes `swimlane-editor.html` = `src/app.html` with the vendor scripts inlined at `<!--LIBS-->` and the AI guide (`docs/AI-DIAGRAMS.md`, downloadable from the help) at `<!--AI-GUIDE-->` |
 | `swimlane-editor.html` | **Build output**, the file users open. Never edit it by hand. |
 | `docs/` | Spec for generating diagrams with AI, and example diagrams |
 | `packaging/windows/` | `install.cmd`, `uninstall.cmd` and the icon for the Windows installer ZIP |

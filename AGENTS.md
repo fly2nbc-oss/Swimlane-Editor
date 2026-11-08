@@ -21,7 +21,7 @@ those areas; where this file says something different, this file wins.
 ## Commands
 
 ```bash
-./build.sh                                   # src/app.html + vendor/ -> swimlane-editor.html
+./build.sh                                   # src/app.html + vendor/ + docs/AI-DIAGRAMS.md -> swimlane-editor.html
 git diff --exit-code swimlane-editor.html    # what CI checks: build output matches the source
 ```
 
@@ -36,7 +36,7 @@ Then open `swimlane-editor.html` in Chrome or Edge. Commit `src/app.html` and `s
 | `swimlane-editor.html` | **Build output**, the file users open. Never edit by hand. |
 | `docs/icon.svg` | App icon; the same drawing is inlined in `src/app.html` (favicon, toolbar) |
 | `packaging/windows/` | `install.cmd` / `uninstall.cmd` (per user: copy to `%LOCALAPPDATA%\Programs`, Start menu entry with `msedge --app`, entry in Settings > Apps) and `swimlane-editor.ico` rendered from `docs/icon.svg`; the release job zips them with the HTML file |
-| `docs/AI-DIAGRAMS.md`, `docs/examples/` | JSON spec for AI-generated diagrams; examples with and without coordinates |
+| `docs/AI-DIAGRAMS.md`, `docs/examples/` | JSON spec for AI-generated diagrams; examples with and without coordinates. `build.sh` inlines the guide at `<!--AI-GUIDE-->` (download in the help dialog) and fails unless its "Complete example" equals `leave-request-simple.json` |
 | `screenshots/` | README screenshot, made from `docs/examples/leave-request-simple.json` |
 | `.github/` | CI, Dependabot, issue forms |
 

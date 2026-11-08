@@ -201,7 +201,7 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
     <button id="bArrange" class="ti" title="Arrange all elements automatically (L)" aria-label="Arrange"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="2.5" width="4.5" height="3.5" rx=".8"/><rect x="10" y="2.5" width="4.5" height="3.5" rx=".8"/><rect x="10" y="10" width="4.5" height="3.5" rx=".8"/><path d="M6 4.25h4M12.25 6v4"/></svg><span class="lbl">Arrange</span></button>
     <span class="spacer"></span>
     <span id="saveState"></span>
-    <button id="bHelp" class="icon" title="Keyboard shortcuts (H)" aria-label="Keyboard shortcuts"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.75c-.5.2-.8.6-.8 1.1v.4"/><circle cx="8" cy="11.6" r=".5" fill="currentColor"/></svg></button>
+    <button id="bHelp" class="icon" title="Help and keyboard shortcuts (H)" aria-label="Help"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.75c-.5.2-.8.6-.8 1.1v.4"/><circle cx="8" cy="11.6" r=".5" fill="currentColor"/></svg></button>
     <button id="bSettings" class="icon" title="Settings: company name and logo for the PDF" aria-label="Settings"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h7M13 4h1M2 8h2M8 8h6M2 12h8M14 12h0"/><circle cx="11" cy="4" r="1.8"/><circle cx="6" cy="8" r="1.8"/><circle cx="12" cy="12" r="1.8"/></svg></button>
     <button class="toggle on" id="bRight" title="Show or hide the right sidebar (Alt+2)" aria-label="Right sidebar"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><rect x="12.5" y="3.5" width="5" height="13" rx="1" fill="currentColor" fill-opacity=".35"/></svg></button>
   </header>
@@ -258,7 +258,7 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
 </dialog>
 
 <dialog id="helpDlg">
-  <h3 style="margin-top:0">Keyboard shortcuts</h3>
+  <h3 style="margin-top:0">Help</h3>
   <div class="body" id="helpBody"></div>
   <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="primary" id="bHelpClose">Close</button></div>
 </dialog>
@@ -274,6 +274,7 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
 
 <div id="toast"></div>
 
+<!--AI-GUIDE-->
 <!--LIBS-->
 
 <script>
@@ -1509,11 +1510,17 @@ const SHORTCUTS = [
   ]],
 ];
 const kbd = t => esc(t).replace(/\[([^\]]+)\]/g, '<kbd>$1</kbd>');
-$('#helpBody').innerHTML = SHORTCUTS.map(([g, rows]) => `<h4>${g}</h4><table>${rows.map(([k, v]) => `<tr><td>${kbd(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`).join('') +
+// The AI guide (docs/AI-DIAGRAMS.md) is inlined by build.sh; src/app.html opened directly has none.
+const aiGuide = document.getElementById('aiGuide');
+$('#helpBody').innerHTML = `<h4>Diagrams with AI</h4>
+  <p class="hint">Give this guide and a short description of your process to an AI, for example Claude. Open the JSON file it writes with <b>Open&hellip;</b>: the editor lays the diagram out.</p>
+  <button id="bAiGuide"${aiGuide ? '' : ' disabled title="Only in the built file swimlane-editor.html"'}>Download AI guide (.md)</button>` +
+  SHORTCUTS.map(([g, rows]) => `<h4>${g}</h4><table>${rows.map(([k, v]) => `<tr><td>${kbd(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`).join('') +
   `<p class="hint">Swimlane Editor ${APP_VERSION} \u00B7 Copyright 2026 fly2nbc-oss \u00B7 Apache License 2.0. Includes jsPDF and svg2pdf.js (MIT).</p>`;
 const openHelp = () => { if (!$('#helpDlg').open) $('#helpDlg').showModal(); };
 $('#bHelp').onclick = openHelp;
 $('#bHelpClose').onclick = () => $('#helpDlg').close();
+$('#bAiGuide').onclick = () => { if (aiGuide) download('swimlane-editor-ai-guide.md', aiGuide.textContent.replace(/^\n/, ''), 'text/markdown'); };
 
 const COLOR_KEYS = { Digit6: '#FBE9E7', Digit7: '#FFF5DD', Digit8: '#E6F5EA', Digit9: '#EAF2FB', Digit0: null };
 let fitZoom = null;
