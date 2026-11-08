@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.4.1] – 2026-11-08
+
 ### Added
 
 - **AI guide in the help**: the help (`H`) has "Download AI guide (.md)": the instructions for writing diagrams with an AI, ready to hand to the AI together with a description of the process. The guide now ends with a complete example, so this one file is enough.
