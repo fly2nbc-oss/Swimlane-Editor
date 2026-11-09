@@ -16,6 +16,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 ### Changed
 
 - **Phase corner**: the cell above the lane headers is empty; it no longer says "Phase" (as in `.drawio` files already).
+- **Decision as a BPMN gateway**: a decision is a small empty diamond (40 px) like the parallel gateway; its question, if any, stands next to it. Arrange gives older 100 × 70 decisions the new size. New decisions start without text, the labels of their connections carry the answers, and those labels start next to the diamond instead of lying on it.
+- **Gateway colour**: decision and parallel gateways are olive, so flow control stands apart from the yellow events.
+- **One text size**: all text in and next to elements, on connections and in notes is 11 px (it was 10 to 12). Lane and phase headers stay 12 px bold.
 
 ## [1.6.2] – 2026-11-09
 

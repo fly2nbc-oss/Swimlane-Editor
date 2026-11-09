@@ -74,7 +74,7 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 | `end` | End, at least once |
 | `task` | Task |
 | `subprocess` | Subprocess (a process of its own, with details elsewhere) |
-| `decision` | Decision; text as a short question ending in "?" |
+| `decision` | Decision (a small diamond); text as a short question ending in "?", shown next to it. Leave the text empty (`""`) when the labels of its connections say enough. |
 | `parallel` | Parallel gateway: all outgoing paths run at the same time; text may be empty (`""`) |
 | `event` | Wait or event, e.g. "Wait 3 days", "Invoice received" |
 | `document` | Document, e.g. form, contract |
