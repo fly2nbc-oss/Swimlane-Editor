@@ -132,6 +132,8 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-
 .lane-row button:disabled{visibility:hidden}
 .lane-row button.danger{color:var(--muted)}
 .lane-row button.danger:hover{color:var(--danger)}
+.lane-row.ms-row{margin:-3px 0 9px 12px}
+.lane-row.ms-row input{font-size:11.5px;padding-top:3px;padding-bottom:3px}
 .swatches{display:flex;gap:6px;flex-wrap:wrap}
 .sw{width:24px;height:24px;border-radius:6px;border:1px solid var(--border);cursor:pointer;padding:0}
 .sw.on{outline:2px solid var(--accent);outline-offset:1px}
@@ -857,7 +859,22 @@ function phasesSVG(d, interactive) {
     s += `<g pointer-events="none">${textBlock(wrap(p.name, c.width - 10, 12, true).slice(0, 1), c.left + c.width / 2, -PHASE_HDR / 2, { size: 12, bold: true })}</g>`;
     if (interactive) s += `<rect class="phasesplit" data-kind="phasesplit" data-i="${i}" x="${c.left + p.width - 4}" y="${-PHASE_HDR}" width="8" height="${PHASE_HDR}" fill="transparent"/>`;
   });
+  cols.forEach((c, i) => { s += milestoneSVG(d.phases[i], c); });
   return s;
+}
+// milestone of a phase: small grey tag at the top right of the phase, just below the header; drawn before
+// the elements, so a step placed there stays readable
+function milestoneBox(p, c) {
+  if (!p.milestone || !String(p.milestone).trim()) return null;
+  const lines = wrap(String(p.milestone).trim(), Math.max(40, Math.min(150, c.width - 24)), 10).slice(0, 3);
+  const w = Math.ceil(Math.max(...lines.map(l => measure(l, 10, false)))) + 12, h = lines.length * 12.5 + 6;
+  return { lines, x: c.left + c.width - w - 6, y: 3, w, h };
+}
+function milestoneSVG(p, c) {
+  const b = milestoneBox(p, c);
+  if (!b) return '';
+  return `<g pointer-events="none"><rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="2" fill="#E6E6E6" stroke="#8A94A0" stroke-width="0.8"/>` +
+    textBlock(b.lines, b.x + 6, b.y + 3, { size: 10, anchor: 'start', mode: 'top', color: '#3E4751' }) + '</g>';
 }
 function contentBounds(d) {
   let x1 = 0, y1 = hasPhases(d) ? -PHASE_HDR : 0, x2 = poolW(d), y2 = totalH(d);
@@ -1431,7 +1448,8 @@ function renderPanel() {
     <h3>Phases (columns)</h3>
     <div id="phaseList">${(D.phases || []).map((p, i) => `<div class="lane-row"><input type="text" data-i="${i}" value="${esc(p.name)}">
       <button data-pl="${i}" title="Move left" ${i === 0 ? 'disabled' : ''}>&larr;</button><button data-pr="${i}" title="Move right" ${i === D.phases.length - 1 ? 'disabled' : ''}>&rarr;</button>
-      <button data-pdel="${i}" class="danger" title="Delete phase">&times;</button></div>`).join('')}</div>
+      <button data-pdel="${i}" class="danger" title="Delete phase">&times;</button></div>
+      <div class="lane-row ms-row"><input type="text" data-mi="${i}" value="${esc(p.milestone || '')}" placeholder="Milestone (optional)" title="Shown as a tag at the top right of the phase"></div>`).join('')}</div>
     <button id="addPhase">+ Add phase</button>
     <p class="hint">Drag the bottom border of a lane to change its height, the right edge of a phase header to change its width, and the right border of the pool to change the pool width. Double-click a header to rename it.</p>` + help;
   $('#pTitle').oninput = panelInput(v => { D.title = v; });
@@ -1454,7 +1472,8 @@ function renderPanel() {
     if (!count) toast(`Lane "${l.name}" deleted. Ctrl+Z undoes it.`);
   });
   $('#addLane').onclick = () => mutate(() => { D.lanes.push({ id: uid(), name: 'Role ' + (D.lanes.length + 1), height: 140 }); });
-  panel.querySelectorAll('#phaseList input').forEach(inp => inp.oninput = panelInput(v => { D.phases[+inp.dataset.i].name = v; }));
+  panel.querySelectorAll('#phaseList input[data-i]').forEach(inp => inp.oninput = panelInput(v => { D.phases[+inp.dataset.i].name = v; }));
+  panel.querySelectorAll('#phaseList input[data-mi]').forEach(inp => inp.oninput = panelInput(v => { const p = D.phases[+inp.dataset.mi]; if (v.trim()) p.milestone = v; else delete p.milestone; }));
   panel.querySelectorAll('[data-pl],[data-pr]').forEach(b => b.onclick = () => mutate(() => {
     const i = +(b.dataset.pl ?? b.dataset.pr), j = b.dataset.pl !== undefined ? i - 1 : i + 1, rel = phaseRelative();
     [D.phases[i], D.phases[j]] = [D.phases[j], D.phases[i]]; applyPhaseRelative(rel);
@@ -1844,8 +1863,13 @@ function drawioDiagram(d) {
     cells.push(vertex('phc-' + d.id, '1', '', 'rounded=0;html=1;fillColor=#DCE3EA;strokeColor=#5B6673;', 0, -PHASE_HDR, CX, PHASE_HDR, { swl: 'phasecorner' }));
     phaseCols(d).forEach((c, i) => {
       const p = d.phases[i];
-      cells.push(vertex('ph-' + p.id, '1', htmlValue(p.name), `rounded=0;whiteSpace=wrap;html=1;fillColor=${i % 2 ? '#E3E9F0' : '#EDF1F5'};strokeColor=#5B6673;fontStyle=1;`, c.left, -PHASE_HDR, c.width, PHASE_HDR, { swl: 'phase', swlWidth: p.width }));
+      cells.push(vertex('ph-' + p.id, '1', htmlValue(p.name), `rounded=0;whiteSpace=wrap;html=1;fillColor=${i % 2 ? '#E3E9F0' : '#EDF1F5'};strokeColor=#5B6673;fontStyle=1;`, c.left, -PHASE_HDR, c.width, PHASE_HDR, { swl: 'phase', swlWidth: p.width, swlMilestone: p.milestone || undefined }));
       if (i > 0) cells.push(vertex('phs-' + p.id, '1', '', 'line;html=1;direction=south;dashed=1;strokeColor=#8A94A0;', c.left - 5, 0, 10, H, { swl: 'phaseline' }));
+    });
+    // milestone tags after the phase lines, so they stay on top
+    phaseCols(d).forEach((c, i) => {
+      const p = d.phases[i], b = milestoneBox(p, c);
+      if (b) cells.push(vertex('phm-' + p.id, '1', htmlValue(b.lines.join('\n')), 'rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#E6E6E6;strokeColor=#8A94A0;fontSize=10;fontColor=#3E4751;align=left;verticalAlign=top;spacingLeft=4;spacingTop=0;', b.x, b.y, b.w, b.h, { swl: 'milestone' }));
     });
   }
   for (const n of d.nodes) {
@@ -1939,7 +1963,7 @@ function modelToDiagram(model, pageName) {
   if (!pool) lanes = all.filter(c => isLane(c) && c.st.horizontal === '0' && !isLane(cells.get(c.parent) || {}));
   lanes.sort((a, b) => abs(a).y - abs(b).y);
   const startOf = c => c ? (c.st.startSize !== undefined ? +c.st.startSize : 23) : 0;
-  const special = new Set(['pool', 'lane', 'phase', 'phasecorner', 'phaseline']);
+  const special = new Set(['pool', 'lane', 'phase', 'phasecorner', 'phaseline', 'milestone']);
   const nodesSrc = all.filter(c => c.vertex && c.geo && c.geo.w > 0 && c.geo.h > 0 && !isLane(c) && !special.has(c.a.swl) && !(cells.get(c.parent) || {}).edge && !c.st._line && c.st.shape !== 'line');
   let ox, oy, srcCX;
   if (lanes.length) {
@@ -1961,7 +1985,7 @@ function modelToDiagram(model, pageName) {
   d.lanes = lanes.map(l => ({ id: l.synthetic ? l.id : strip(l.id, 'lane-'), name: l.text || 'Lane', height: Math.max(60, Math.round(l.geo.h)) }));
   if (pool && lanes[0] !== pool) d.width = Math.max(300, Math.round(pool.geo.w - srcCX));
   d.phases = all.filter(c => c.a.swl === 'phase' && c.geo).sort((a, b) => abs(a).x - abs(b).x)
-    .map(c => ({ id: strip(c.id, 'ph-'), name: c.text, width: Math.max(80, Math.round(+c.a.swlWidth || c.geo.w)) }));
+    .map(c => ({ id: strip(c.id, 'ph-'), name: c.text, width: Math.max(80, Math.round(+c.a.swlWidth || c.geo.w)), ...(c.a.swlMilestone ? { milestone: c.a.swlMilestone } : {}) }));
   const idMap = new Map();
   d.nodes = nodesSrc.map(c => {
     const p = abs(c), type = TYPES[c.a.swlType] ? c.a.swlType : inferType(c.st), id = strip(c.id, 'n-');
@@ -2256,7 +2280,8 @@ function validate(raw) {
   const rawNodes = (d.nodes || []).filter(n => n && TYPES[n.type]);
   const needsLayout = rawNodes.some(n => n.x === undefined || n.x === null || n.y === undefined || n.y === null);
   d.nodes = rawNodes.map(n => ({ ...n, id: String(n.id ?? uid()), x: +n.x || 0, y: +n.y || 0, w: +n.w || TYPES[n.type].w, h: +n.h || TYPES[n.type].h, text: String(n.text ?? '') }));
-  d.phases = (Array.isArray(d.phases) ? d.phases : []).map(p => typeof p === 'string' ? { name: p } : p).map(p => ({ id: p.id || uid(), name: String(p.name ?? ''), width: Math.max(80, +p.width || 300) }));
+  d.phases = (Array.isArray(d.phases) ? d.phases : []).filter(p => p !== null && p !== undefined).map(p => typeof p === 'string' ? { name: p } : p)
+    .map(p => ({ id: p.id || uid(), name: String(p.name ?? ''), width: Math.max(80, +p.width || 300), ...(p.milestone ? { milestone: String(p.milestone) } : {}) }));
   const ids = new Set(d.nodes.map(n => n.id));
   d.edges = (d.edges || []).map(e => ({ ...e, from: String(e.from), to: String(e.to) })).filter(e => ids.has(e.from) && ids.has(e.to)).map(e => ({ fromSide: 'auto', toSide: 'auto', type: 'flow', label: '', ...e, label: String(e.label ?? ''), id: e.id || uid() }));
   if (needsLayout) autoLayout(d, new Map(d.nodes.map(n => [n.id, { lane: n.lane, phase: n.phase, col: n.col }])), { resetSides: false });
@@ -2274,7 +2299,8 @@ function harden(d) {
   d.nodes = Array.isArray(d.nodes) ? d.nodes : [];
   d.edges = Array.isArray(d.edges) ? d.edges : [];
   d.lanes.forEach(l => { l.id = safeId(l.id); });
-  d.phases.forEach(p => { p.id = safeId(p.id); });
+  d.phases = d.phases.filter(p => p && typeof p === 'object');
+  d.phases.forEach(p => { p.id = safeId(p.id); if (p.milestone !== undefined && !(p.milestone = String(p.milestone ?? '')).trim()) delete p.milestone; });
   const ids = new Map();
   d.nodes.forEach(n => {
     const id = safeId(n.id); ids.set(n.id, id); n.id = id;

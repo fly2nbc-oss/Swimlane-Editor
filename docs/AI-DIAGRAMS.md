@@ -52,7 +52,7 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 | `owner`, `description` | no | Shown in the PDF |
 | `version`, `status` | no | e.g. `"1.0"`, `"Draft"` / `"In review"` / `"Released"` |
 | `lanes` | yes | Roles or departments, top to bottom. The first lane is usually the trigger or the customer. |
-| `phases` | no | Stages of the process, left to right. 2 to 5 phases. |
+| `phases` | no | Stages of the process, left to right. 2 to 5 phases. Each entry is a name, or an object `{ "name": "Definition", "milestone": "Q1: Requirements approved" }` when the phase ends with a milestone (shown as a small tag at the top right of the phase). |
 | `nodes` | yes | Elements (see below) |
 | `edges` | yes | Connections (see below) |
 
@@ -63,7 +63,7 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 | `id` | yes | Unique, short: letters, digits, `-`, `_`, `.`, `:` |
 | `type` | yes | Only a value from the table below. An element with any other type is left out, together with its connections. |
 | `lane` | yes | Name of the lane, exactly as in `lanes` |
-| `phase` | no | Name of the phase, exactly as in `phases` |
+| `phase` | no | Name of the phase, exactly as in `phases` (the `name`, not the milestone) |
 | `text` | yes | Short: tasks as "verb + object", about 5 words at most |
 | `color` | no | Highlight: `#FBE9E7` red, `#FFF5DD` yellow, `#E6F5EA` green, `#EAF2FB` blue; also `#F1E8FA` purple, `#F2F4F6` grey, `#FFFFFF` white |
 
