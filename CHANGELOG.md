@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.6.0] – 2026-11-09
+
 ### Added
 
 - **Documents in a row**: Arrange puts the documents and systems of a step side by side in a row below it, hanging from one shared dotted line, so lanes stay compact. Columns get wider where a row needs the space.
