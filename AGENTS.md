@@ -82,6 +82,7 @@ No test framework in the repo. Playwright (Python, `channel="msedge"` uses the i
 1. Set `APP_VERSION` in `src/app.html` (help dialog, PDF properties), add `## [x.y.z] – date` to `CHANGELOG.md`, rebuild, commit, push, wait for green CI.
 2. Tag `vx.y.z` only when the owner says so. CI checks tag = `APP_VERSION` and the changelog section, attests the files and drafts the release.
 3. Check the draft, then `gh release edit vx.y.z --draft=false --latest`. Releases are immutable once published.
+4. `packaging/local-release.sh` (Git Bash): downloads the published installer zip, checks it against `SHA256SUMS.txt` and unpacks all its files into `dist/vx.y.z/` (git-ignored), one folder per version.
 
 ## Gotchas
 
