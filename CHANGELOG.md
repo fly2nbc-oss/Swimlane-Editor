@@ -7,10 +7,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.7.0] – 2026-11-09
+
+### Added
+
+- **Recent files**: the empty page lists the last 10 files you opened or saved, with date or time. A click opens the file again (the browser may ask for permission once); × removes an entry; a file that was moved or deleted leaves the list. Files opened without the file picker (the plain file dialog of some browsers) are listed but cannot be opened from there.
+
 ### Fixed
 
 - **Parallel gateway too big**: it is 40 px like a BPMN gateway (was 50) and its plus is thinner. Gateways already in a diagram keep their size.
-- **Text over the subprocess marker**: a subprocess keeps its text above the plus box at the bottom; text that needs three lines is one size smaller. The same for System / Data boxes, whose text stays below the top curve.
+- **Text over the subprocess marker**: a subprocess keeps its text above the plus box at the bottom. The same for System / Data boxes, whose text stays below the top curve.
 - **Label colour**: the text below document and system icons has the same grey as the text below events.
 
 ### Changed
@@ -19,6 +25,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 - **Decision as a BPMN gateway**: a decision is a small empty diamond (40 px) like the parallel gateway; its question, if any, stands next to it. Arrange gives older 100 × 70 decisions the new size. New decisions start without text, the labels of their connections carry the answers, and those labels start next to the diamond instead of lying on it.
 - **Gateway colour**: decision and parallel gateways are olive, so flow control stands apart from the yellow events.
 - **One text size**: all text in and next to elements, on connections and in notes is 11 px (it was 10 to 12). Lane and phase headers stay 12 px bold.
+- **Phase headers**: all phase headers have the same background; the dashed lines separate the phases.
 
 ## [1.6.2] – 2026-11-09
 

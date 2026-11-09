@@ -102,6 +102,19 @@ h3:first-child{margin-top:0}
 #emptyState small{font-size:12px}
 #canvasWrap.dropping{outline:3px dashed var(--accent);outline-offset:-8px}
 body.nodiagram #emptyState{display:flex}
+#recentFiles{width:min(480px,90%);margin-top:8px}
+#recentFiles:empty{display:none}
+#recentFiles .recent-head{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 6px 2px}
+#recentFiles ul{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:8px;background:var(--panel);overflow:hidden}
+#recentFiles li{display:flex;align-items:stretch;border-top:1px solid var(--border)}
+#recentFiles li:first-child{border-top:0}
+#recentFiles button{border:0;border-radius:0;background:none;margin:0}
+#recentFiles .recent-open{flex:1;min-width:0;display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 12px;text-align:left;font-size:13px;color:var(--text)}
+#recentFiles .recent-open:hover:not(:disabled),#recentFiles .recent-del:hover{background:var(--hover)}
+#recentFiles .recent-open:disabled{color:var(--muted);cursor:default}
+#recentFiles .recent-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#recentFiles .recent-date{flex:none;font-size:12px;color:var(--muted)}
+#recentFiles .recent-del{flex:none;width:34px;color:var(--muted);font-size:15px}
 body.nodiagram #palette{opacity:.45;pointer-events:none}
 #stage{position:relative;display:inline-block;margin:0}
 #canvas{display:block;user-select:none;touch-action:none}
@@ -238,6 +251,7 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
       <span>No diagram yet.</span>
       <div class="row"><button class="primary" id="bEmptyNew">+ New diagram</button><button id="bEmptyOpen">Open file&hellip;</button></div>
       <small>Or drop a .drawio or .json file here.</small>
+      <div id="recentFiles" aria-label="Recent files"></div>
     </div>
   </main>
 
@@ -958,7 +972,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.6.2'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.7.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -1540,7 +1554,7 @@ function phasesSVG(d, interactive) {
   cols.forEach((c, i) => {
     const p = d.phases[i];
     if (i > 0) s += `<line x1="${c.left}" y1="0" x2="${c.left}" y2="${H}" stroke="#8A94A0" stroke-width="1" stroke-dasharray="6 4"/>`;
-    s += `<rect class="phasehdr" data-kind="phasehdr" data-i="${i}" x="${c.left}" y="${-PHASE_HDR}" width="${c.width}" height="${PHASE_HDR}" fill="${i % 2 ? '#E3E9F0' : '#EDF1F5'}" stroke="#5B6673" stroke-width="1.5"/>`;
+    s += `<rect class="phasehdr" data-kind="phasehdr" data-i="${i}" x="${c.left}" y="${-PHASE_HDR}" width="${c.width}" height="${PHASE_HDR}" fill="${'#EDF1F5'}" stroke="#5B6673" stroke-width="1.5"/>`;
     s += `<g pointer-events="none">${textBlock(wrap(p.name, c.width - 10, 12, true).slice(0, 1), c.left + c.width / 2, -PHASE_HDR / 2, { size: 12, bold: true })}</g>`;
     if (interactive) s += `<rect class="phasesplit" data-kind="phasesplit" data-i="${i}" x="${c.left + p.width - 4}" y="${-PHASE_HDR}" width="8" height="${PHASE_HDR}" fill="transparent"/>`;
   });
@@ -1619,6 +1633,7 @@ function renderAll() {
     svg.innerHTML = ''; svg.setAttribute('width', 0); svg.setAttribute('height', 0);
     renderList(); $('#saveState').textContent = ''; $('#saveState').title = '';
     panel.innerHTML = '';
+    renderRecent();
     return;
   }
   renderCanvas(); renderList(); renderPanel(); renderSaveState(); renderPalette();
@@ -1750,7 +1765,13 @@ $('#canvasWrap').addEventListener('dragover', ev => { ev.preventDefault(); if (h
 $('#canvasWrap').addEventListener('dragleave', ev => { if (!$('#canvasWrap').contains(ev.relatedTarget)) $('#canvasWrap').classList.remove('dropping'); });
 $('#canvasWrap').addEventListener('drop', async ev => {
   ev.preventDefault(); $('#canvasWrap').classList.remove('dropping');
-  if (ev.dataTransfer.files.length) { for (const f of [...ev.dataTransfer.files]) await openFile(f, null); return; }
+  if (ev.dataTransfer.files.length) {
+    // handles must be asked for before the first await
+    const hs = [...ev.dataTransfer.items].filter(it => it.kind === 'file').map(it => typeof it.getAsFileSystemHandle === 'function' ? it.getAsFileSystemHandle().catch(() => null) : Promise.resolve(null));
+    const files = [...ev.dataTransfer.files];
+    for (let i = 0; i < files.length; i++) { const h = await (hs[i] || null); await openFile(files[i], null, h && h.kind === 'file' ? h : null); }
+    return;
+  }
   if (!D) return;
   const data = ev.dataTransfer.getData('text/plain');
   if (!data.startsWith('swimlane:')) return;
@@ -2672,7 +2693,7 @@ function drawioDiagram(d) {
     cells.push(vertex('phc-' + d.id, '1', '', 'rounded=0;html=1;fillColor=#DCE3EA;strokeColor=#5B6673;', 0, -PHASE_HDR, CX, PHASE_HDR, { swl: 'phasecorner' }));
     phaseCols(d).forEach((c, i) => {
       const p = d.phases[i];
-      cells.push(vertex('ph-' + p.id, '1', htmlValue(p.name), `rounded=0;whiteSpace=wrap;html=1;fillColor=${i % 2 ? '#E3E9F0' : '#EDF1F5'};strokeColor=#5B6673;fontStyle=1;`, c.left, -PHASE_HDR, c.width, PHASE_HDR, { swl: 'phase', swlWidth: p.width, swlMilestone: p.milestone || undefined }));
+      cells.push(vertex('ph-' + p.id, '1', htmlValue(p.name), `rounded=0;whiteSpace=wrap;html=1;fillColor=${'#EDF1F5'};strokeColor=#5B6673;fontStyle=1;`, c.left, -PHASE_HDR, c.width, PHASE_HDR, { swl: 'phase', swlWidth: p.width, swlMilestone: p.milestone || undefined }));
       if (i > 0) cells.push(vertex('phs-' + p.id, '1', '', 'line;html=1;direction=south;dashed=1;strokeColor=#8A94A0;', c.left - 5, 0, 10, H, { swl: 'phaseline' }));
     });
     // milestone tags after the phase lines, so they stay on top
@@ -2873,7 +2894,7 @@ function phaseLabelsFor(d, a, b) {
   phaseCols(d).forEach((c, i) => {
     const l = Math.max(c.left, a), r = Math.min(c.left + c.width, b);
     if (r - l < 20 || (l === c.left && r === c.left + c.width)) return;
-    s += `<rect x="${l}" y="${-PHASE_HDR}" width="${r - l}" height="${PHASE_HDR}" fill="${i % 2 ? '#E3E9F0' : '#EDF1F5'}" stroke="#5B6673" stroke-width="1.5"/>` +
+    s += `<rect x="${l}" y="${-PHASE_HDR}" width="${r - l}" height="${PHASE_HDR}" fill="${'#EDF1F5'}" stroke="#5B6673" stroke-width="1.5"/>` +
       textBlock(wrap(d.phases[i].name + (l > c.left ? ' (continued)' : ''), r - l - 10, 12, true).slice(0, 1), (l + r) / 2, -PHASE_HDR / 2, { size: 12, bold: true });
   });
   return s;
@@ -3012,9 +3033,59 @@ async function saveFile(asNew) {
     if (h && (await h.queryPermission({ mode: 'readwrite' })) !== 'granted' && (await h.requestPermission({ mode: 'readwrite' })) !== 'granted') h = null;
     if (!h) h = await window.showSaveFilePicker({ suggestedName: suggested, types: DRAWIO_PICK });
     const w = await h.createWritable(); await w.write(xml); await w.close();
-    rememberHandle(key, h); done(h.name);
+    rememberHandle(key, h); done(h.name); addRecent(h.name, h);
     toast('Saved to ' + h.name + pages);
   } catch (e) { if (e.name !== 'AbortError') toast('Save failed: ' + e.message); }
+}
+// Recent files: the last RECENT_MAX files opened or saved, shown on the empty page. The browser keeps the file
+// handles (IndexedDB), so a click opens the file again after asking for permission. A file that came without a
+// handle (file input, some drops) is listed but cannot be opened from the list.
+const RECENT_KEY = '\u0000recent', RECENT_MAX = 10;
+async function recentList() { try { const r = await idb.get(RECENT_KEY); return Array.isArray(r) ? r.filter(x => x && typeof x.name === 'string') : []; } catch (e) { return []; } }
+async function addRecent(name, handle) {
+  try {
+    const keep = [];
+    for (const r of await recentList()) {
+      const same = handle && r.handle ? await r.handle.isSameEntry(handle).catch(() => false) : r.name === name;
+      if (!same) keep.push(r);
+    }
+    await idb.set(RECENT_KEY, [{ name, handle: handle || null, at: Date.now() }, ...keep].slice(0, RECENT_MAX));
+  } catch (e) { /* no IndexedDB: no list */ }
+  if (!D) renderRecent();
+}
+async function removeRecent(r) {
+  try { await idb.set(RECENT_KEY, (await recentList()).filter(x => !(x.at === r.at && x.name === r.name))); } catch (e) {}
+  renderRecent();
+}
+async function openRecent(r) {
+  try {
+    let perm = await r.handle.queryPermission({ mode: 'read' });
+    if (perm !== 'granted') perm = await r.handle.requestPermission({ mode: 'read' });
+    if (perm !== 'granted') { toast('No permission to read ' + r.name); return; }
+    await openFile(await r.handle.getFile(), r.handle);
+  } catch (e) {
+    if (e.name === 'NotFoundError') { toast(r.name + ' was moved or deleted. It is removed from the list.'); removeRecent(r); }
+    else toast('Could not open ' + r.name + ': ' + e.message);
+  }
+}
+let recentSeq = 0;
+async function renderRecent() {
+  const seq = ++recentSeq, list = await recentList(), box = $('#recentFiles');
+  if (seq !== recentSeq) return;
+  box.replaceChildren();
+  if (!list.length) return;
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+  const when = t => { const d = new Date(t); return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString(); };
+  const ul = el('ul');
+  for (const r of list) {
+    const li = el('li'), b = el('button', 'recent-open'), x = el('button', 'recent-del', '\u00d7');
+    b.append(el('span', 'recent-name', r.name), el('span', 'recent-date', when(r.at)));
+    if (r.handle) { b.title = 'Open ' + r.name; b.onclick = () => openRecent(r); }
+    else { b.disabled = true; b.title = r.name + ': the browser gave no access to this file. Open it with Open\u2026'; }
+    x.title = 'Remove ' + r.name + ' from the list'; x.setAttribute('aria-label', x.title); x.onclick = () => removeRecent(r);
+    li.append(b, x); ul.append(li);
+  }
+  box.append(el('div', 'recent-head', 'Recent files'), ul);
 }
 async function openFiles() {
   if (typeof window.showOpenFilePicker !== 'function') { $('#fileInput').click(); return; }
@@ -3023,7 +3094,7 @@ async function openFiles() {
     for (const h of hs) await openFile(await h.getFile(), h);
   } catch (e) { if (e.name !== 'AbortError') toast('Open failed: ' + e.message); }
 }
-async function openFile(file, handle) {
+async function openFile(file, handle, recentHandle = null) {
   try {
     const text = await file.text();
     let list, fromDrawio = false;
@@ -3072,6 +3143,7 @@ async function openFile(file, handle) {
     if (last && last.fileName && handle) rememberHandle(groupKey(last), handle);
     if (last) { D = null; switchTo(last.id); }
     toast(`${reload ? 'Reloaded' : 'Opened'} ${file.name}` + (list.length > 1 ? ` (${list.length} pages)` : ''));
+    addRecent(file.name, handle || recentHandle);
   } catch (e) { toast('Could not open ' + file.name + ': ' + e.message); }
 }
 $('#bOpen').onclick = openFiles;
