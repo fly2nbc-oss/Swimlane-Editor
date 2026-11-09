@@ -871,7 +871,7 @@ function contentBounds(d) {
   for (const n of d.nodes) {
     x1 = Math.min(x1, n.x); x2 = Math.max(x2, n.x + n.w);
     y1 = Math.min(y1, n.y); y2 = Math.max(y2, n.y + n.h + (LABEL_BELOW.has(n.type) && n.text ? 16 + 14 * (wrap(n.text, 130, 11).length - 1) : 0));
-    if (LABEL_BELOW.has(n.type)) { x1 = Math.min(x1, n.x + n.w / 2 - 70); x2 = Math.max(x2, n.x + n.w / 2 + 70); }
+    if (LABEL_BELOW.has(n.type)) { x1 = Math.min(x1, n.x + n.w / 2 - 70); x2 = Math.max(x2, n.x + n.w / 2 + (n.type === 'parallel' ? 105 : 70)); }
   }
   for (const e of d.edges) for (const p of route(d, e)) { x1 = Math.min(x1, p.x); x2 = Math.max(x2, p.x); y1 = Math.min(y1, p.y); y2 = Math.max(y2, p.y); }
   return { x1, y1, x2, y2 };
@@ -2034,7 +2034,7 @@ async function svgToPdf(doc, str, x, y, w, h) {
 // split the content range [CX, right] into page segments of at most segW model px
 function pageSegments(d, right, segW) {
   // break candidates: phase borders first, then gaps between elements; never cut through an element if avoidable
-  const iv = d.nodes.map(n => [n.x - 8, n.x + n.w + 8 + (LABEL_BELOW.has(n.type) ? 40 : 0)]).sort((a, b) => a[0] - b[0]);
+  const iv = d.nodes.map(n => [n.x - 8, n.x + n.w + 8 + (n.type === 'parallel' ? 80 : LABEL_BELOW.has(n.type) ? 40 : 0)]).sort((a, b) => a[0] - b[0]);
   const free = x => !iv.some(([a, b]) => x > a && x < b);
   const phaseC = hasPhases(d) ? phaseCols(d).slice(1).map(c => c.left).filter(free) : [];
   const gaps = []; let end = -Infinity;
