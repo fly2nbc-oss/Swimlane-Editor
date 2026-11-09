@@ -1954,7 +1954,7 @@ function drawioDiagram(d) {
   }
   for (const n of d.nodes) {
     const li = laneIndexAt(d, n.y + n.h / 2), st = STYLE[n.type];
-    let style = DRAWIO_NODE[n.type] + `strokeColor=${st.stroke};` + (iconArt(d, n) ? 'verticalLabelPosition=bottom;verticalAlign=top;fontSize=10;' : 'fontSize=12;');
+    let style = iconArt(d, n) ? DRAWIO_NODE[n.type].replace('whiteSpace=wrap;', '') + `strokeColor=${st.stroke};verticalLabelPosition=bottom;verticalAlign=top;fontSize=10;` : DRAWIO_NODE[n.type] + `strokeColor=${st.stroke};fontSize=12;`;
     style += n.type === 'note' ? `fillColor=${n.color || 'none'};` : `fillColor=${n.color || st.fill};`;
     cells.push(vertex('n-' + n.id, 'lane-' + d.lanes[li].id, htmlValue(n.text), style, n.x - POOL_HDR, n.y - tops[li], n.w, n.h, { swl: 'node', swlType: n.type, swlColor: n.color }));
   }
