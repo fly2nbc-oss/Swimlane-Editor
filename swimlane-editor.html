@@ -2398,7 +2398,7 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
   // 5. cells: the first free row in (column, lane); parallel branches get extra rows.
   // Documents and systems/data linked to a step go into its document row (comb), unless a column or another lane
   // is asked for; notes and the rest take a free cell. An artifact linked to several steps belongs to the first.
-  const occ = new Set(), row = new Map(), comb = new Map();
+  const occ = new Set(), row = new Map(), comb = new Map(), noteTop = new Map();
   const place = (id, c, li) => { let r = 0; while (occ.has(c + '|' + li + '|' + r)) r++; occ.add(c + '|' + li + '|' + r); col.set(id, c); lane.set(id, li); row.set(id, r); };
   main.forEach(id => place(id, col.get(id), lane.get(id)));
   for (const n of nodes) if (isArtifact(n.id)) {
@@ -2406,6 +2406,13 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
     const anchor = a ? (a.from === n.id ? a.to : a.from) : null;
     let li = resolveRef(d.lanes, hint(n.id).lane); if (li < 0) li = anchor ? lane.get(anchor) : 0;
     const hc = hint(n.id).col, hasCol = hc !== undefined && hc !== null && hc !== '';
+    if (anchor && n.type === 'note' && !hasCol && li === lane.get(anchor)) {
+      // a note sits right above the element it belongs to (its text is short, a milestone for example)
+      if (!noteTop.has(anchor)) noteTop.set(anchor, []);
+      noteTop.get(anchor).push({ id: n.id });
+      col.set(n.id, col.get(anchor)); lane.set(n.id, li); row.set(n.id, row.get(anchor));
+      continue;
+    }
     if (anchor && n.type !== 'note' && !hasCol && li === lane.get(anchor)) {
       if (!comb.has(anchor)) comb.set(anchor, []);
       comb.get(anchor).push({ id: n.id, input: a.from === n.id });
@@ -2414,6 +2421,13 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
     }
     place(n.id, hasCol ? Math.max(0, Math.floor(+hc) || 0) : anchor ? col.get(anchor) : 0, li);
   }
+  // above a step with inputs there is no room for a note: it takes a free cell as before
+  for (const [s, list] of [...noteTop]) if ((comb.get(s) || []).some(x => x.input)) {
+    noteTop.delete(s);
+    for (const { id } of list) place(id, col.get(s), lane.get(s));
+  }
+  const notesUp = new Set([...noteTop.values()].flat().map(x => x.id));
+  for (const id of notesUp) { const n = byId.get(id); n.w = Math.min(COL_W - 20, Math.max(60, Math.ceil((measure(n.text, 11.5) + 34) / GRID) * GRID)); n.h = noteHeight(n); }
   // document rows: inputs in a row above the step, outputs in a row below it; lines of at most COMB_MAX artifacts,
   // each centred on the step (labels of input icons sit above them, see iconLabelTop)
   const foot = n => iconArt(d, n) ? { w: Math.max(n.w, ICON_LABEL_W), h: n.h + 5 + belowLabel(d, n).lines.length * ICON_FONT * 1.25 } : { w: n.w, h: n.h };
@@ -2438,6 +2452,7 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
     if (outs.length) blocks.set(s, makeBlock(outs));
     if (ins.length) blocksIn.set(s, makeBlock(ins));
   }
+  for (const [s, list] of noteTop) blocksIn.set(s, makeBlock(list));
   // column widths and positions: as wide as the widest document row in the column needs
   const colW = [];
   for (const bl of [blocks, blocksIn]) for (const [s, b] of bl) { const c = col.get(s); colW[c] = Math.max(colW[c] || COL_W, Math.ceil((b.w + 30) / GRID) * GRID); }
@@ -2475,7 +2490,7 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
   for (const [s, b] of blocksIn) { const st = byId.get(s); placeBlock(b, st.x + st.w / 2, st.y - COMB_GAP, true); }
   // notes fill their cell and reach into the next one when it is free in their row (not across a phase border, see 7.);
   // the top stays, a note grows downwards with its text
-  for (const n of nodes) if (n.type === 'note' && isArtifact(n.id)) {
+  for (const n of nodes) if (n.type === 'note' && isArtifact(n.id) && !notesUp.has(n.id)) {
     const c = col.get(n.id), wide = !occ.has((c + 1) + '|' + lane.get(n.id) + '|' + row.get(n.id));
     n.x = colL(c) + 10; n.w = wide ? cw(c) + 90 : cw(c) - 20; n.h = noteHeight(n);
   }
@@ -2530,6 +2545,12 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
   for (const [s, list] of comb) for (const { id } of list) for (const e of d.edges) {
     if (e.type !== 'assoc' || !free(e)) continue;
     if (e.from === s && e.to === id) { e.fromSide = 'bottom'; e.toSide = 'top'; }
+    else if (e.from === id && e.to === s) { e.fromSide = 'bottom'; e.toSide = 'top'; }
+  }
+  // a note above its element: straight down from the note into the element's top
+  for (const [s, list] of noteTop) for (const { id } of list) for (const e of d.edges) {
+    if (e.type !== 'assoc' || !free(e)) continue;
+    if (e.from === s && e.to === id) { e.fromSide = 'top'; e.toSide = 'bottom'; }
     else if (e.from === id && e.to === s) { e.fromSide = 'bottom'; e.toSide = 'top'; }
   }
   // artifacts stacked below (or above) their step: the nearest one keeps a straight line,

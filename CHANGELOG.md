@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+### Fixed
+
+- **Notes placed far away**: Arrange puts a note right above the element it belongs to, as wide as its text, with a straight dotted line down to it. Before, it took the next free cell in the column, often below other elements, and its line ran through their labels. Above a step with input documents the note keeps the old place.
+
 ## [1.6.1] – 2026-11-09
 
 ### Changed
