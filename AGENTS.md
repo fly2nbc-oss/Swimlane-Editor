@@ -43,7 +43,7 @@ Then open `swimlane-editor.html` in Chrome or Edge. Commit `src/app.html` and `s
 ## Data model (one diagram)
 
 ```js
-{ id, title, owner, version, status, description, created, updated, width,
+{ id, title, owner, version, status, description, created, updated, width, artifactStyle?,  // artifactStyle: "icon" or left out (boxes)
   lanes:  [{ id, name, height }],            // top to bottom
   phases: [{ id, name, width }],             // left to right, optional
   nodes:  [{ id, type, x, y, w, h, text, color? }],
