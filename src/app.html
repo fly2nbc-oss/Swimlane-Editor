@@ -300,7 +300,7 @@ const TYPES = {
   start:      { label:'Start',         w:36,  h:36, text:'Start' },
   task:       { label:'Task',          w:120, h:60, text:'Task' },
   decision:   { label:'Decision',      w:100, h:70, text:'Decision?' },
-  parallel:   { label:'Parallel',      w:50,  h:50, text:'' },
+  parallel:   { label:'Parallel',      w:40,  h:40, text:'' },
   end:        { label:'End',           w:36,  h:36, text:'End' },
   subprocess: { label:'Subprocess',    w:120, h:60, text:'Subprocess' },
   event:      { label:'Wait / Event',  w:36,  h:36, text:'' },
@@ -415,6 +415,12 @@ function fitNote(d, n) {
   if (over <= 0) return;
   for (const m of d.nodes) if (m.y + m.h / 2 >= bottom) m.y += over;
   d.lanes[i].height += over;
+}
+// lines for a box of the given inner width and height: size 12, or 11 when 12 needs more lines than fit
+function fitLines(text, w, h) {
+  const l12 = wrap(text, w, 12);
+  if (l12.length * 15 <= h) return { lines: l12, size: 12 };
+  return { lines: wrap(text, w, 11), size: 11 };
 }
 function textBlock(lines, x, y, { size = 12, anchor = 'middle', mode = 'middle', color = '#1f2933', bold = false, transform = '' } = {}) {
   if (!lines.length || (lines.length === 1 && !lines[0])) return '';
@@ -819,7 +825,7 @@ function nodeSVG(n, { interactive, selected, icon, labelTop }) {
       label = textBlock(wrap(n.text, w * 0.62, 11), cx, cy, { size: 11 }); break;
     case 'parallel': // BPMN parallel gateway: diamond with a bold plus, text below (LABEL_BELOW)
       shape = `<polygon points="${cx},${y} ${x + w},${cy} ${cx},${y + h} ${x},${cy}" fill="${fill}" stroke="${s}" stroke-width="1.5" stroke-linejoin="round"/>` +
-        `<path d="M${cx - w * 0.24},${cy} H${cx + w * 0.24} M${cx},${cy - h * 0.24} V${cy + h * 0.24}" stroke="${s}" stroke-width="${Math.max(2.5, Math.min(w, h) * 0.08)}" stroke-linecap="round"/>`; break;
+        `<path d="M${cx - w * 0.2},${cy} H${cx + w * 0.2} M${cx},${cy - h * 0.2} V${cy + h * 0.2}" stroke="${s}" stroke-width="${Math.max(2, Math.min(w, h) * 0.055)}" stroke-linecap="round"/>`; break;
     case 'document':
       shape = `<path d="M${x},${y} H${x + w} V${y + h - 8} Q${x + w * 0.75},${y + h - 18} ${cx},${y + h - 8} T${x},${y + h - 8} Z" fill="${fill}" stroke="${s}" stroke-width="1.5"/>`;
       label = textBlock(wrap(n.text, w - 12), cx, cy - 4); break;
@@ -827,7 +833,7 @@ function nodeSVG(n, { interactive, selected, icon, labelTop }) {
       const ry = 8;
       shape = `<path d="M${x},${y + ry} A${w / 2},${ry} 0 0 1 ${x + w},${y + ry} V${y + h - ry} A${w / 2},${ry} 0 0 1 ${x},${y + h - ry} Z" fill="${fill}" stroke="${s}" stroke-width="1.5"/>` +
         `<path d="M${x},${y + ry} A${w / 2},${ry} 0 0 0 ${x + w},${y + ry}" fill="none" stroke="${s}" stroke-width="1.5"/>`;
-      label = textBlock(wrap(n.text, w - 10), cx, cy + ry / 2); break;
+      { const f = fitLines(n.text, w - 10, h - 2.5 * ry); label = textBlock(f.lines, cx, y + 2 * ry + (h - 2.5 * ry) / 2 - 2, { size: f.size }); } break;
     }
     case 'note':
       shape = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${n.color || '#ffffff'}" fill-opacity="${n.color ? 1 : 0}" stroke="none"/>` +
@@ -837,7 +843,7 @@ function nodeSVG(n, { interactive, selected, icon, labelTop }) {
       shape = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${s}" stroke-width="1.5"/>` +
         `<rect x="${cx - 7}" y="${y + h - 16}" width="14" height="12" fill="#fff" stroke="${s}" stroke-width="1"/>` +
         `<path d="M${cx - 4},${y + h - 10} H${cx + 4} M${cx},${y + h - 14} V${y + h - 6}" stroke="${s}" stroke-width="1.2"/>`;
-      label = textBlock(wrap(n.text, w - 12), cx, cy - 5); break;
+      { const f = fitLines(n.text, w - 12, h - 20); label = textBlock(f.lines, cx, y + (h - 16) / 2 + 1, { size: f.size }); } break;
     default:
       shape = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${s}" stroke-width="1.5"/>`;
       label = textBlock(wrap(n.text, w - 12), cx, cy);
@@ -845,7 +851,7 @@ function nodeSVG(n, { interactive, selected, icon, labelTop }) {
   if (LABEL_BELOW.has(n.type)) label = textBlock(wrap(n.text, 130, 11), cx, y + h + 3, { size: 11, mode: 'top', color: '#3d4752' });
   else if (icon && ICON_SIZE[n.type]) {
     const ls = wrap(n.text, ICON_LABEL_W, ICON_FONT);
-    label = textBlock(ls, cx, labelTop ? y - 4 - ls.length * ICON_FONT * 1.25 : y + h + 3, { size: ICON_FONT, mode: 'top', color: '#1f2933' });
+    label = textBlock(ls, cx, labelTop ? y - 4 - ls.length * ICON_FONT * 1.25 : y + h + 3, { size: ICON_FONT, mode: 'top', color: '#3d4752' });
   }
   // a gateway's lines leave and enter at its corners (also the bottom one): its text sits below right, clear of them
   if (n.type === 'parallel') label = textBlock(wrap(n.text, 90, 11), cx + 14, cy + h * 0.38, { size: 11, mode: 'top', anchor: 'start', color: '#3d4752' });

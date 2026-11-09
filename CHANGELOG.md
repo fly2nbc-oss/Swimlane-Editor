@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+### Fixed
+
+- **Parallel gateway too big**: it is 40 px like a BPMN gateway (was 50) and its plus is thinner. Gateways already in a diagram keep their size.
+- **Text over the subprocess marker**: a subprocess keeps its text above the plus box at the bottom; text that needs three lines is one size smaller. The same for System / Data boxes, whose text stays below the top curve.
+- **Label colour**: the text below document and system icons has the same grey as the text below events.
+
 ## [1.6.2] – 2026-11-09
 
 ### Fixed
