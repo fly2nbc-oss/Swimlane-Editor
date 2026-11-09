@@ -53,6 +53,7 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 | `version`, `status` | no | e.g. `"1.0"`, `"Draft"` / `"In review"` / `"Released"` |
 | `lanes` | yes | Roles or departments, top to bottom. The first lane is usually the trigger or the customer. |
 | `phases` | no | Stages of the process, left to right. 2 to 5 phases. Each entry is a name, or an object `{ "name": "Definition", "milestone": "Q1: Requirements approved" }` when the phase ends with a milestone (shown as a small tag at the top right of the phase). |
+| `artifactStyle` | no | `"icon"` draws documents and systems/data as small symbols with the text below (BPMN style); leave it out for boxes with the text inside |
 | `nodes` | yes | Elements (see below) |
 | `edges` | yes | Connections (see below) |
 

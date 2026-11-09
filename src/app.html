@@ -309,6 +309,17 @@ const TYPES = {
   note:       { label:'Note',          w:140, h:50, text:'Note' }
 };
 const LABEL_BELOW = new Set(['start','end','event','parallel']);
+// diagram setting artifactStyle 'icon': documents and systems/data as small symbols (BPMN data object / data store)
+// with the text below; 'box' (default, field left out) draws them as boxes with the text inside
+const ICON_SIZE = { document: { w: 36, h: 46 }, data: { w: 40, h: 40 } }, ICON_LABEL_W = 90, ICON_FONT = 10;
+const iconArt = (d, n) => !!d && d.artifactStyle === 'icon' && !!ICON_SIZE[n.type];
+const typeSize = (type, d) => (d && d.artifactStyle === 'icon' && ICON_SIZE[type]) || TYPES[type];
+const labelBelow = (d, n) => LABEL_BELOW.has(n.type) || iconArt(d, n);
+// the label below an element: lines, font size, half its width
+function belowLabel(d, n) {
+  const icon = iconArt(d, n), size = icon ? ICON_FONT : 11;
+  return { lines: wrap(n.text, icon ? ICON_LABEL_W : 130, size), size, half: icon ? ICON_LABEL_W / 2 : 70 };
+}
 const ROUND = new Set(['start','end','event']);
 const GATEWAYS = new Set(['decision','parallel']); // diamonds: branches leave from different corners
 const STYLE = {
@@ -546,11 +557,21 @@ function buildRoute(d, e, sa, sb, k) {
     if (spineBlocked(d, st, ar, x, y, pa.y)) return null;
     return [ps, { x: ps.x, y }, { x, y }, { x, y: pa.y }, pa];
   };
+  // document row (comb): down from the bottom of the step to a bus just above the row, along it, down into the
+  // artifact; all artifacts of a row share the bus. Only for sides set to bottom and top (autoLayout does that).
+  const comb = (st, ar, ps, pa) => {
+    const base = pa.y - COMB_BUS, y = base + k;
+    if (ARTIFACTS.has(st.type) || !ICON_SIZE[ar.type] || y < ps.y + 8 || y > pa.y - 4) return null;
+    return { pts: [ps, { x: ps.x, y }, { x: pa.x, y }, pa], base, pos: y };
+  };
   if (e.type === 'assoc') {
-    let pts = null;
+    let pts = null, cb = null;
     if ((sa === 'bottom' || sa === 'top') && sb === 'left' && ARTIFACTS.has(b.type) && !ARTIFACTS.has(a.type)) pts = spine(a, b, p1, p2, sa);
     else if ((sb === 'bottom' || sb === 'top') && sa === 'left' && ARTIFACTS.has(a.type) && !ARTIFACTS.has(b.type)) pts = spine(b, a, p2, p1, sb)?.reverse();
+    else if (e.fromSide === 'bottom' && e.toSide === 'top') cb = comb(a, b, p1, p2);
+    else if (e.fromSide === 'top' && e.toSide === 'bottom') { cb = comb(b, a, p2, p1); if (cb) cb.pts.reverse(); }
     if (pts) return { pts, axis: 'x', base: pts[2].x, pos: pts[2].x, spreadable: false };
+    if (cb) return { pts: simplify(cb.pts), axis: 'y', base: cb.base, pos: cb.pos, spreadable: false };
   }
   // a note is met straight across from the other element when that is on its bracket (a wide note's centre is often not under its step)
   const meet = (pn, n, side, po) => {
@@ -742,11 +763,20 @@ function labelPos(d, e, pts) {
 }
 
 /* ================= rendering ================= */
-function nodeSVG(n, { interactive, selected }) {
+// icon: document or system/data drawn as a symbol with the text below (see artifactStyle)
+function nodeSVG(n, { interactive, selected, icon }) {
   const st = STYLE[n.type] || STYLE.task, fill = n.color || st.fill, s = st.stroke;
   const { x, y, w, h } = n, cx = x + w / 2, cy = y + h / 2;
   let shape = '', label = '';
-  switch (n.type) {
+  if (icon && n.type === 'document') {
+    const f = Math.min(10, w / 3, h / 3);
+    shape = `<path d="M${x},${y} H${x + w - f} L${x + w},${y + f} V${y + h} H${x} Z" fill="${fill}" stroke="${s}" stroke-width="1.5" stroke-linejoin="round"/>` +
+      `<path d="M${x + w - f},${y} V${y + f} H${x + w}" fill="none" stroke="${s}" stroke-width="1.2" stroke-linejoin="round"/>`;
+  } else if (icon && n.type === 'data') {
+    const ry = Math.min(6, h / 5);
+    shape = `<path d="M${x},${y + ry} A${w / 2},${ry} 0 0 1 ${x + w},${y + ry} V${y + h - ry} A${w / 2},${ry} 0 0 1 ${x},${y + h - ry} Z" fill="${fill}" stroke="${s}" stroke-width="1.5"/>` +
+      `<path d="M${x},${y + ry} A${w / 2},${ry} 0 0 0 ${x + w},${y + ry}" fill="none" stroke="${s}" stroke-width="1.5"/>`;
+  } else switch (n.type) {
     case 'start':
       shape = `<circle cx="${cx}" cy="${cy}" r="${w / 2 - 1}" fill="${fill}" stroke="${s}" stroke-width="2"/>`; break;
     case 'end':
@@ -782,6 +812,7 @@ function nodeSVG(n, { interactive, selected }) {
       label = textBlock(wrap(n.text, w - 12), cx, cy);
   }
   if (LABEL_BELOW.has(n.type)) label = textBlock(wrap(n.text, 130, 11), cx, y + h + 3, { size: 11, mode: 'top', color: '#3d4752' });
+  else if (icon && ICON_SIZE[n.type]) label = textBlock(wrap(n.text, ICON_LABEL_W, ICON_FONT), cx, y + h + 3, { size: ICON_FONT, mode: 'top', color: '#1f2933' });
   // a gateway's lines leave and enter at its corners (also the bottom one): its text sits below right, clear of them
   if (n.type === 'parallel') label = textBlock(wrap(n.text, 90, 11), cx + 14, cy + h * 0.38, { size: 11, mode: 'top', anchor: 'start', color: '#3d4752' });
   let extra = '';
@@ -887,8 +918,9 @@ function contentBounds(d) {
   let x1 = 0, y1 = hasPhases(d) ? -PHASE_HDR : 0, x2 = poolW(d), y2 = totalH(d);
   for (const n of d.nodes) {
     x1 = Math.min(x1, n.x); x2 = Math.max(x2, n.x + n.w);
-    y1 = Math.min(y1, n.y); y2 = Math.max(y2, n.y + n.h + (LABEL_BELOW.has(n.type) && n.text ? 16 + 14 * (wrap(n.text, 130, 11).length - 1) : 0));
-    if (LABEL_BELOW.has(n.type)) { x1 = Math.min(x1, n.x + n.w / 2 - 70); x2 = Math.max(x2, n.x + n.w / 2 + (n.type === 'parallel' ? 105 : 70)); }
+    const lb = labelBelow(d, n) ? belowLabel(d, n) : null;
+    y1 = Math.min(y1, n.y); y2 = Math.max(y2, n.y + n.h + (lb && n.text ? 16 + 14 * (lb.lines.length - 1) : 0));
+    if (lb) { x1 = Math.min(x1, n.x + n.w / 2 - lb.half); x2 = Math.max(x2, n.x + n.w / 2 + (n.type === 'parallel' ? 105 : lb.half)); }
   }
   for (const e of d.edges) for (const p of route(d, e)) { x1 = Math.min(x1, p.x); x2 = Math.max(x2, p.x); y1 = Math.min(y1, p.y); y2 = Math.max(y2, p.y); }
   return { x1, y1, x2, y2 };
@@ -897,7 +929,7 @@ function diagramMarkup(d, opts) {
   const valid = new Set(d.nodes.map(n => n.id));
   let s = lanesSVG(d, opts.interactive) + phasesSVG(d, opts.interactive);
   for (const e of d.edges) if (valid.has(e.from) && valid.has(e.to)) s += edgeSVG(d, e, { interactive: opts.interactive, selected: opts.interactive && selEdge === e.id });
-  for (const n of d.nodes) s += nodeSVG(n, { interactive: opts.interactive, selected: opts.interactive && sel.has(n.id) });
+  for (const n of d.nodes) s += nodeSVG(n, { interactive: opts.interactive, selected: opts.interactive && sel.has(n.id), icon: iconArt(d, n) });
   return s;
 }
 function exportSVGString(d) {
@@ -1072,8 +1104,8 @@ $('#canvasWrap').addEventListener('drop', async ev => {
   pushUndo(); const n = addNode(type, p); sel = new Set([n.id]); selEdge = null; changed();
 });
 function addNode(type, c) {
-  const t = TYPES[type];
-  const n = { id: uid(), type, x: c.x - t.w / 2, y: c.y - t.h / 2, w: t.w, h: t.h, text: t.text };
+  const t = TYPES[type], z = typeSize(type, D);
+  const n = { id: uid(), type, x: c.x - z.w / 2, y: c.y - z.h / 2, w: z.w, h: z.h, text: t.text };
   snapNode(n); clampNode(D, n); D.nodes.push(n); return n;
 }
 function overlaps(n) { return D.nodes.some(o => o !== n && n.x < o.x + o.w + 10 && n.x + n.w + 10 > o.x && n.y < o.y + o.h + 10 && n.y + n.h + 10 > o.y); }
@@ -1082,10 +1114,10 @@ function quickAdd(type) {
   pushUndo();
   const src = sel.size === 1 ? nodeById(D, [...sel][0]) : null;
   let c;
-  if (src) c = { x: src.x + src.w + 50 + TYPES[type].w / 2, y: src.y + src.h / 2 };
+  if (src) c = { x: src.x + src.w + 50 + typeSize(type, D).w / 2, y: src.y + src.h / 2 };
   else {
     const right = D.nodes.length ? Math.max(...D.nodes.map(n => n.x + n.w)) : CX + 20;
-    c = { x: right + 40 + TYPES[type].w / 2, y: D.lanes[0].height / 2 };
+    c = { x: right + 40 + typeSize(type, D).w / 2, y: D.lanes[0].height / 2 };
   }
   const n = addNode(type, c);
   for (let i = 0; i < 60 && overlaps(n); i++) { n.x += 20; }
@@ -1317,7 +1349,7 @@ function cancelEditor() { if (!editor) return; editor.el.remove(); editor = null
 function editNode(n) {
   if (!n) return;
   let box = { x: n.x, y: n.y, w: n.w, h: n.h };
-  if (LABEL_BELOW.has(n.type)) box = { x: n.x + n.w / 2 - 70, y: n.y + n.h + 2, w: 140, h: 44 };
+  if (labelBelow(D, n)) box = { x: n.x + n.w / 2 - 70, y: n.y + n.h + 2, w: 140, h: 44 };
   if (n.type === 'parallel') box = { x: n.x + n.w / 2 + 10, y: n.y + n.h * 0.88, w: 110, h: 44 };
   openEditor({ ...box, value: n.text, align: n.type === 'note' ? 'left' : 'center', onCommit: v => { n.text = v; } });
 }
@@ -1357,9 +1389,19 @@ const ALIGN_ICONS = (() => {
 // change the type; the size stays unless a circle or a decision is involved, the centre stays
 function setNodeType(n, type) {
   if (!TYPES[type] || n.type === type) return;
-  const c = center(n), t = TYPES[type], keepSize = !ROUND.has(n.type) && !ROUND.has(type) && !GATEWAYS.has(type) && !GATEWAYS.has(n.type);
+  const c = center(n), t = typeSize(type, D), keepSize = !ROUND.has(n.type) && !ROUND.has(type) && !GATEWAYS.has(type) && !GATEWAYS.has(n.type) && !iconArt(D, n) && !iconArt(D, { type });
   n.type = type; if (!keepSize) { n.w = t.w; n.h = t.h; }
   n.x = c.x - n.w / 2; n.y = c.y - n.h / 2; snapNode(n);
+}
+// switch documents and systems/data between boxes and icons: new default size, the top and the horizontal centre stay
+// (so a row of documents stays aligned)
+function setArtifactStyle(d, style) {
+  if (style === 'icon') d.artifactStyle = 'icon'; else delete d.artifactStyle;
+  for (const n of d.nodes) {
+    if (!ICON_SIZE[n.type]) continue;
+    const z = typeSize(n.type, d), cx = n.x + n.w / 2;
+    n.w = z.w; n.h = z.h; n.x = cx - n.w / 2;
+  }
 }
 const SWATCH_NAMES = { '': 'Default for the element type (0)', '#FFFFFF': 'White', '#EAF2FB': 'Blue (9)', '#E6F5EA': 'Green (8)', '#FFF5DD': 'Yellow (7)', '#FBE9E7': 'Red (6)', '#F1E8FA': 'Purple', '#F2F4F6': 'Grey' };
 const swatchesHTML = cur => `<div class="swatches" role="group" aria-label="Fill color">${SWATCHES.map(c => { const t = SWATCH_NAMES[c] || c; return `<button class="sw ${c ? '' : 'none'} ${cur === c ? 'on' : ''}" data-c="${c}" title="${t}" aria-label="${t}" aria-pressed="${cur === c}" style="${c ? 'background:' + c : ''}">${c ? '' : 'A'}</button>`; }).join('')}</div>`;
@@ -1448,6 +1490,8 @@ function renderPanel() {
     <div class="row"><div style="flex:1"><label class="f">Version</label><input type="text" id="pVersion" value="${esc(D.version)}"></div>
     <div style="flex:1"><label class="f">Status</label><select id="pStatus">${['Draft', 'In review', 'Released'].map(s => `<option ${D.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>
     <label class="f">Description (shown in PDF)</label><textarea id="pDesc">${esc(D.description)}</textarea>
+    <label class="f">Documents and systems</label><select id="pArt" title="How documents and systems/data are drawn">
+      <option value="box" ${D.artifactStyle === 'icon' ? '' : 'selected'}>Boxes with the text inside</option><option value="icon" ${D.artifactStyle === 'icon' ? 'selected' : ''}>Icons with the text below</option></select>
     <h3>Lanes (roles)</h3>
     <div id="laneList">${D.lanes.map((l, i) => `<div class="lane-row"><input type="text" data-i="${i}" value="${esc(l.name)}">
       <button data-up="${i}" title="Move up" ${i === 0 ? 'disabled' : ''}>&uarr;</button><button data-down="${i}" title="Move down" ${i === D.lanes.length - 1 ? 'disabled' : ''}>&darr;</button>
@@ -1465,6 +1509,7 @@ function renderPanel() {
   $('#pVersion').oninput = panelInput(v => { D.version = v; });
   $('#pDesc').oninput = panelInput(v => { D.description = v; });
   $('#pStatus').onchange = ev => mutate(() => { D.status = ev.target.value; });
+  $('#pArt').onchange = ev => { mutate(() => setArtifactStyle(D, ev.target.value)); toast('Arrange (L) lays out the diagram for the new size.'); };
   panel.querySelectorAll('#laneList input').forEach(inp => inp.oninput = panelInput(v => { D.lanes[+inp.dataset.i].name = v; }));
   panel.querySelectorAll('[data-up],[data-down]').forEach(b => b.onclick = () => mutate(() => {
     const i = +(b.dataset.up ?? b.dataset.down), j = b.dataset.up !== undefined ? i - 1 : i + 1, rel = laneRelative();
@@ -1641,7 +1686,12 @@ document.addEventListener('keydown', ev => {
 
 /* ================= automatic layout ================= */
 // Columns = steps (left to right), lanes = roles, extra rows inside a lane for parallel branches.
+// Documents and systems/data of a step sit side by side in a row below it (a comb, see buildRoute); a column is as
+// wide as its widest document row needs.
 const COL0 = 158, COL_W = 170, ROW_H = 110, ARTIFACTS = new Set(['document', 'data', 'note']);
+// document row: gap from the step to the row, gap between artifacts, extra gap in the middle of a full line
+// (the line from the step to the next line passes there), gap between lines, artifacts per line
+const COMB_GAP = 34, COMB_BUS = 14, ART_GAP = 16, ART_MID = 16, COMB_LINE_GAP = 26, COMB_MAX = { box: 4, icon: 6 };
 function resolveRef(list, ref) {
   if (ref === undefined || ref === null || ref === '') return -1;
   if (typeof ref === 'number') return ref >= 0 && ref < list.length ? Math.floor(ref) : -1;
@@ -1653,6 +1703,7 @@ function resolveRef(list, ref) {
 }
 function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
   const nodes = d.nodes, byId = new Map(nodes.map(n => [n.id, n])), hint = id => hints.get(id) || {};
+  for (const n of nodes) if (iconArt(d, n)) Object.assign(n, ICON_SIZE[n.type]);
   const flow = d.edges.filter(e => e.type !== 'assoc' && byId.has(e.from) && byId.has(e.to) && e.from !== e.to);
   const inFlow = new Set(flow.flatMap(e => [e.from, e.to]));
   const isArtifact = id => ARTIFACTS.has(byId.get(id).type) && !inFlow.has(id);
@@ -1694,48 +1745,94 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
     }
     if (!moved) break;
   }
-  // 5. cells: the first free row in (column, lane); parallel branches get extra rows
-  const occ = new Set(), row = new Map();
+  // 5. cells: the first free row in (column, lane); parallel branches get extra rows.
+  // Documents and systems/data linked to a step go into its document row (comb), unless a column or another lane
+  // is asked for; notes and the rest take a free cell. An artifact linked to several steps belongs to the first.
+  const occ = new Set(), row = new Map(), comb = new Map();
   const place = (id, c, li) => { let r = 0; while (occ.has(c + '|' + li + '|' + r)) r++; occ.add(c + '|' + li + '|' + r); col.set(id, c); lane.set(id, li); row.set(id, r); };
   main.forEach(id => place(id, col.get(id), lane.get(id)));
   for (const n of nodes) if (isArtifact(n.id)) {
     const a = d.edges.find(e => (e.from === n.id && byId.has(e.to) && !isArtifact(e.to)) || (e.to === n.id && byId.has(e.from) && !isArtifact(e.from)));
     const anchor = a ? (a.from === n.id ? a.to : a.from) : null;
     let li = resolveRef(d.lanes, hint(n.id).lane); if (li < 0) li = anchor ? lane.get(anchor) : 0;
-    const hc = hint(n.id).col;
-    place(n.id, hc !== undefined && hc !== null && hc !== '' ? Math.max(0, Math.floor(+hc) || 0) : anchor ? col.get(anchor) : 0, li);
+    const hc = hint(n.id).col, hasCol = hc !== undefined && hc !== null && hc !== '';
+    if (anchor && n.type !== 'note' && !hasCol && li === lane.get(anchor)) {
+      if (!comb.has(anchor)) comb.set(anchor, []);
+      comb.get(anchor).push({ id: n.id, input: a.from === n.id });
+      col.set(n.id, col.get(anchor)); lane.set(n.id, li); row.set(n.id, row.get(anchor));
+      continue;
+    }
+    place(n.id, hasCol ? Math.max(0, Math.floor(+hc) || 0) : anchor ? col.get(anchor) : 0, li);
   }
-  // 6. lane heights and positions
+  // document rows: inputs first, then outputs; lines of at most COMB_MAX artifacts, each centred under the step
+  const foot = n => iconArt(d, n) ? { w: Math.max(n.w, ICON_LABEL_W), h: n.h + 5 + belowLabel(d, n).lines.length * ICON_FONT * 1.25 } : { w: n.w, h: n.h };
+  const blocks = new Map();
+  for (const [s, list] of comb) {
+    list.sort((p, q) => (q.input ? 1 : 0) - (p.input ? 1 : 0));
+    const per = COMB_MAX[d.artifactStyle === 'icon' ? 'icon' : 'box'], lines = [];
+    for (let i = 0; i < list.length; i += per) lines.push(list.slice(i, i + per).map(x => byId.get(x.id)));
+    const info = lines.map((ln, i) => {
+      // a full line with more lines below leaves a gap exactly under the step, the line to the next one runs there
+      const span = a => a.reduce((x, n) => x + foot(n).w, 0) + ART_GAP * (a.length - 1), h = Math.max(...ln.map(n => foot(n).h));
+      if (i < lines.length - 1 && ln.length > 1) {
+        const half = ln.length / 2, left = span(ln.slice(0, half)), right = span(ln.slice(half));
+        return { ln, left, w: 2 * Math.max(left, right) + ART_GAP + ART_MID, h };
+      }
+      return { ln, w: span(ln), h };
+    });
+    blocks.set(s, { lines: info, w: Math.max(...info.map(l => l.w)), h: info.reduce((a, l) => a + l.h, 0) + COMB_LINE_GAP * (info.length - 1) });
+  }
+  // column widths and positions: as wide as the widest document row in the column needs
+  const colW = [];
+  for (const [s, b] of blocks) { const c = col.get(s); colW[c] = Math.max(colW[c] || COL_W, Math.ceil((b.w + 30) / GRID) * GRID); }
+  const cw = c => colW[c] || COL_W, colL = c => { let x = COL0 - COL_W / 2; for (let i = 0; i < c; i++) x += cw(i); return x; };
+  const colC = c => colL(c) + cw(c) / 2, colR = c => colL(c) + cw(c);
+  // 6. lane heights and positions; a row is taller by the document rows of its steps
   const rows = d.lanes.map((l, i) => Math.max(1, ...nodes.filter(n => lane.get(n.id) === i).map(n => row.get(n.id) + 1)));
-  d.lanes.forEach((l, i) => { l.height = Math.max(140, rows[i] * ROW_H + 30); });
+  const rowH = rows.map(k => Array(k).fill(ROW_H));
+  for (const [s, b] of blocks) { const n = byId.get(s), li = lane.get(s), r = row.get(s); rowH[li][r] = Math.max(rowH[li][r], Math.ceil((ROW_H / 2 + n.h / 2 + COMB_GAP + b.h + 12) / GRID) * GRID); }
+  const rowTop = (li, r) => rowH[li].slice(0, r).reduce((a, h) => a + h, 0);
+  d.lanes.forEach((l, i) => { l.height = Math.max(140, rowTop(i, rows[i]) + 30); });
   const tops = laneTops(d);
   for (const n of nodes) {
-    const li = lane.get(n.id), cx = COL0 + col.get(n.id) * COL_W;
-    const cy = rows[li] === 1 ? tops[li] + d.lanes[li].height / 2 : tops[li] + 15 + row.get(n.id) * ROW_H + ROW_H / 2;
+    const li = lane.get(n.id), cx = colC(col.get(n.id)), cy = tops[li] + 15 + rowTop(li, row.get(n.id)) + ROW_H / 2;
     n.x = cx - n.w / 2; n.y = cy - n.h / 2;
+  }
+  for (const [s, b] of blocks) {
+    const st = byId.get(s), cx = st.x + st.w / 2;
+    let y = st.y + st.h + COMB_GAP;
+    for (const l of b.lines) {
+      let x = l.left !== undefined ? cx - (ART_GAP + ART_MID) / 2 - l.left : cx - l.w / 2;
+      l.ln.forEach((n, i) => {
+        const f = foot(n);
+        n.x = Math.round(x + f.w / 2 - n.w / 2); n.y = Math.round(y);
+        x += f.w + ART_GAP + (l.left !== undefined && i === l.ln.length / 2 - 1 ? ART_MID : 0);
+      });
+      y += l.h + COMB_LINE_GAP;
+    }
   }
   // notes fill their cell and reach into the next one when it is free in their row (not across a phase border, see 7.);
   // the top stays, a note grows downwards with its text
   for (const n of nodes) if (n.type === 'note' && isArtifact(n.id)) {
     const c = col.get(n.id), wide = !occ.has((c + 1) + '|' + lane.get(n.id) + '|' + row.get(n.id));
-    n.x = COL0 + c * COL_W - COL_W / 2 + 10; n.w = wide ? COL_W + 90 : COL_W - 20; n.h = noteHeight(n);
+    n.x = colL(c) + 10; n.w = wide ? cw(c) + 90 : cw(c) - 20; n.h = noteHeight(n);
   }
   const maxCol = Math.max(0, ...nodes.map(n => col.get(n.id)));
-  d.width = Math.max(600, COL0 + maxCol * COL_W + COL_W / 2 - CX, ...nodes.map(n => n.x + n.w + 20 - CX));
+  d.width = Math.max(600, colR(maxCol) - CX, ...nodes.map(n => n.x + n.w + 20 - CX));
   // 7. phase widths follow their columns
   if (P) {
     let left = CX, prevEnd = -1;
     d.phases.forEach((p, pi) => {
       const cs = main.filter(id => phase.get(id) === pi).map(id => col.get(id));
       const end = cs.length ? Math.max(Math.max(...cs), prevEnd + 1) : prevEnd + 1;
-      const right = COL0 + end * COL_W + COL_W / 2;
+      const right = colR(end);
       p.width = Math.max(80, right - left); left = right; prevEnd = end;
     });
     // a wide note ends before the border of its phase
     const borders = []; let bx = CX; d.phases.forEach(p => { bx += p.width; borders.push(bx); });
-    for (const n of nodes) if (n.type === 'note' && n.w > COL_W - 20) {
-      const end = borders.find(x => x > n.x + COL_W / 2);
-      if (end !== undefined && n.x + n.w > end - 10) { n.w = Math.max(COL_W - 20, Math.floor((end - 10 - n.x) / GRID) * GRID); n.h = noteHeight(n); }
+    for (const n of nodes) if (n.type === 'note' && n.w > cw(col.get(n.id)) - 20) {
+      const c = cw(col.get(n.id)), end = borders.find(x => x > n.x + c / 2);
+      if (end !== undefined && n.x + n.w > end - 10) { n.w = Math.max(c - 20, Math.floor((end - 10 - n.x) / GRID) * GRID); n.h = noteHeight(n); }
     }
   }
   // 8. line routing hints: decision and parallel branches leave on different sides, loops go around
@@ -1762,9 +1859,16 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
     if (dl > 0) { e.fromSide = 'bottom'; e.toSide = 'top'; }
     else if (dl < 0) { e.fromSide = 'top'; e.toSide = 'bottom'; }
     else {
-      const usedBottom = d.edges.some(o => o !== e && o.from === e.from && o.fromSide === 'bottom');
+      // a loop goes over the top when a document row hangs below one of its ends
+      const usedBottom = comb.has(e.from) || comb.has(e.to) || d.edges.some(o => o !== e && o.from === e.from && o.fromSide === 'bottom');
       e.fromSide = e.toSide = usedBottom ? 'top' : 'bottom';
     }
+  }
+  // document rows: down from the step to the row (output) or up into the step (input), see buildRoute
+  for (const [s, list] of comb) for (const { id } of list) for (const e of d.edges) {
+    if (e.type !== 'assoc' || !free(e)) continue;
+    if (e.from === s && e.to === id) { e.fromSide = 'bottom'; e.toSide = 'top'; }
+    else if (e.from === id && e.to === s) { e.fromSide = 'top'; e.toSide = 'bottom'; }
   }
   // artifacts stacked below (or above) their step: the nearest one keeps a straight line,
   // the others branch off a shared spine left of the stack (see buildRoute)
@@ -1873,7 +1977,7 @@ function drawioDiagram(d) {
   const vertex = (id, parent, value, style, x, y, w, h, meta) => `<object id="${xa(id)}" label="${xa(value)}"${props(meta)}><mxCell style="${xa(style)}" vertex="1" parent="${xa(parent)}"><mxGeometry x="${x}" y="${y}" width="${w}" height="${h}" as="geometry"/></mxCell></object>`;
   const cells = ['<mxCell id="0"/>', '<mxCell id="1" parent="0"/>'];
   cells.push(vertex(pid, '1', htmlValue(d.title), `swimlane;html=1;horizontal=0;startSize=${POOL_HDR};fillColor=#DCE3EA;strokeColor=#5B6673;swimlaneFillColor=#FFFFFF;fontStyle=1;collapsible=0;`, 0, 0, PW, H,
-    { swl: 'pool', swlId: d.id, swlOwner: d.owner, swlVersion: d.version, swlStatus: d.status, swlDescription: d.description, swlCreated: d.created, swlUpdated: d.updated }));
+    { swl: 'pool', swlId: d.id, swlOwner: d.owner, swlVersion: d.version, swlStatus: d.status, swlDescription: d.description, swlCreated: d.created, swlUpdated: d.updated, swlArtifactStyle: d.artifactStyle }));
   d.lanes.forEach((l, i) => cells.push(vertex('lane-' + l.id, pid, htmlValue(l.name), `swimlane;html=1;horizontal=0;startSize=${LANE_HDR};fillColor=#EDF1F5;strokeColor=#5B6673;swimlaneFillColor=${i % 2 ? '#F6F8FA' : '#FFFFFF'};fontStyle=1;collapsible=0;`, POOL_HDR, tops[i], PW - POOL_HDR, l.height, { swl: 'lane' })));
   if (hasPhases(d)) {
     cells.push(vertex('phc-' + d.id, '1', '', 'rounded=0;html=1;fillColor=#DCE3EA;strokeColor=#5B6673;', 0, -PHASE_HDR, CX, PHASE_HDR, { swl: 'phasecorner' }));
@@ -1890,7 +1994,7 @@ function drawioDiagram(d) {
   }
   for (const n of d.nodes) {
     const li = laneIndexAt(d, n.y + n.h / 2), st = STYLE[n.type];
-    let style = DRAWIO_NODE[n.type] + `strokeColor=${st.stroke};fontSize=12;`;
+    let style = iconArt(d, n) ? DRAWIO_NODE[n.type].replace('whiteSpace=wrap;', '') + `strokeColor=${st.stroke};verticalLabelPosition=bottom;verticalAlign=top;fontSize=10;` : DRAWIO_NODE[n.type] + `strokeColor=${st.stroke};fontSize=12;`;
     style += n.type === 'note' ? `fillColor=${n.color || 'none'};` : `fillColor=${n.color || st.fill};`;
     cells.push(vertex('n-' + n.id, 'lane-' + d.lanes[li].id, htmlValue(n.text), style, n.x - POOL_HDR, n.y - tops[li], n.w, n.h, { swl: 'node', swlType: n.type, swlColor: n.color }));
   }
@@ -1997,7 +2101,7 @@ function modelToDiagram(model, pageName) {
   const dx = CX - srcCX, strip = (id, pre) => String(id || '').startsWith(pre) ? String(id).slice(pre.length) : (id || uid());
   const meta = pool ? pool.a : {};
   const d = newDiagram(pool && lanes[0] !== pool ? (pool.text || pageName) : pageName);
-  Object.assign(d, { id: meta.swlId || uid(), owner: meta.swlOwner || '', version: meta.swlVersion || '1.0', status: meta.swlStatus || 'Draft', description: meta.swlDescription || '' });
+  Object.assign(d, { id: meta.swlId || uid(), owner: meta.swlOwner || '', version: meta.swlVersion || '1.0', status: meta.swlStatus || 'Draft', description: meta.swlDescription || '', artifactStyle: meta.swlArtifactStyle });
   if (meta.swlCreated) d.created = meta.swlCreated;
   if (meta.swlUpdated) d.updated = meta.swlUpdated;
   d.lanes = lanes.map(l => ({ id: l.synthetic ? l.id : strip(l.id, 'lane-'), name: l.text || 'Lane', height: Math.max(60, Math.round(l.geo.h)) }));
@@ -2058,7 +2162,8 @@ async function svgToPdf(doc, str, x, y, w, h) {
 // split the content range [CX, right] into page segments of at most segW model px
 function pageSegments(d, right, segW) {
   // break candidates: phase borders first, then gaps between elements; never cut through an element if avoidable
-  const iv = d.nodes.map(n => [n.x - 8, n.x + n.w + 8 + (n.type === 'parallel' ? 80 : LABEL_BELOW.has(n.type) ? 40 : 0)]).sort((a, b) => a[0] - b[0]);
+  const ext = n => iconArt(d, n) ? Math.max(0, ICON_LABEL_W / 2 - n.w / 2) : 0;
+  const iv = d.nodes.map(n => [n.x - 8 - ext(n), n.x + n.w + 8 + (n.type === 'parallel' ? 80 : LABEL_BELOW.has(n.type) ? 40 : ext(n))]).sort((a, b) => a[0] - b[0]);
   const free = x => !iv.some(([a, b]) => x > a && x < b);
   const phaseC = hasPhases(d) ? phaseCols(d).slice(1).map(c => c.left).filter(free) : [];
   const gaps = []; let end = -Infinity;
@@ -2294,10 +2399,11 @@ document.addEventListener('keydown', ev => {
 function validate(raw) {
   const d = Object.assign(newDiagram(), raw);
   if (!Array.isArray(d.lanes) || !d.lanes.length) throw new Error('Diagram without lanes');
+  if (d.artifactStyle !== 'icon') delete d.artifactStyle;
   d.lanes = d.lanes.map(l => typeof l === 'string' ? { name: l } : l).map(l => ({ id: l.id || uid(), name: String(l.name ?? ''), height: Math.max(60, +l.height || 140) }));
   const rawNodes = (d.nodes || []).filter(n => n && TYPES[n.type]);
   const needsLayout = rawNodes.some(n => n.x === undefined || n.x === null || n.y === undefined || n.y === null);
-  d.nodes = rawNodes.map(n => ({ ...n, id: String(n.id ?? uid()), x: +n.x || 0, y: +n.y || 0, w: +n.w || TYPES[n.type].w, h: +n.h || TYPES[n.type].h, text: String(n.text ?? '') }));
+  d.nodes = rawNodes.map(n => ({ ...n, id: String(n.id ?? uid()), x: +n.x || 0, y: +n.y || 0, w: +n.w || typeSize(n.type, d).w, h: +n.h || typeSize(n.type, d).h, text: String(n.text ?? '') }));
   d.phases = (Array.isArray(d.phases) ? d.phases : []).filter(p => p !== null && p !== undefined).map(p => typeof p === 'string' ? { name: p } : p)
     .map(p => ({ id: p.id || uid(), name: String(p.name ?? ''), width: Math.max(80, +p.width || 300), ...(p.milestone ? { milestone: String(p.milestone) } : {}) }));
   const ids = new Set(d.nodes.map(n => n.id));
@@ -2312,6 +2418,7 @@ function harden(d) {
   d.id = safeId(d.id);
   for (const k of ['title', 'owner', 'version', 'status', 'description', 'created', 'updated']) d[k] = String(d[k] ?? '');
   d.width = +d.width || 900;
+  if (d.artifactStyle !== 'icon') delete d.artifactStyle;
   d.lanes = Array.isArray(d.lanes) ? d.lanes : [];
   d.phases = Array.isArray(d.phases) ? d.phases : [];
   d.nodes = Array.isArray(d.nodes) ? d.nodes : [];

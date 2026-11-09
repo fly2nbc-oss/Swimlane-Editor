@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+### Added
+
+- **Documents in a row**: Arrange puts the documents and systems of a step side by side in a row below it, hanging from one shared dotted line, so lanes stay compact. Columns get wider where a row needs the space.
+- **Documents as icons**: new diagram setting "Documents and systems": boxes, or small symbols with the text below, as in BPMN. Saved in JSON (`artifactStyle`) and `.drawio` files.
+- **Parallel gateway**: a new element (diamond with a plus, as in BPMN) splits the flow into branches that run at the same time and joins them again. Arrange routes the branches from separate corners, and the lines need no label. It is kept in `.drawio` files, and draw.io's own BPMN parallel gateways are recognised on import.
+- **Phase milestones**: a phase can have a milestone (for example "Q1: PRD Released"), shown as a small grey tag at the top right of the phase. Enter it under the phase name in the details panel, or in JSON as `{ "name": "...", "milestone": "..." }` in `phases`. It is kept in `.drawio` files, SVG and PDF.
+
 ## [1.5.0] – 2026-11-09
 
 ### Changed
