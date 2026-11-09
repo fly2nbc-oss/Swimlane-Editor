@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.6.1] – 2026-11-09
+
 ### Changed
 
 - **Inputs from above, outputs below**: a document or system/data line always enters its step at the top or the left (input) and leaves it at the right or the bottom (output), also for lines you draw yourself. Arrange puts the inputs of a step in a row above it, the outputs in a row below it; input icons have their text above them.
