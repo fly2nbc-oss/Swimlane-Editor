@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.4.2] – 2026-11-09
+
+### Fixed
+
+- **Several documents on one step**: Arrange and the JSON import stack them below the step as before, but only the nearest one keeps a straight line. The others branch off a shared dotted spine left of the stack instead of all running around the right side of the step.
+
 ## [1.4.1] – 2026-11-08
 
 ### Added

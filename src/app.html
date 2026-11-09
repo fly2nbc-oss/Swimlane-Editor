@@ -310,7 +310,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.4.1'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.4.2'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -514,6 +514,20 @@ function edgeSides(d, e) {
 function buildRoute(d, e, sa, sb, k) {
   const a = nodeById(d, e.from), b = nodeById(d, e.to);
   const p1 = sidePoint(a, sa), p2 = sidePoint(b, sb), S = 18;
+  // artifact stack: from the bottom (or top) of the step out to a spine left of the stack, then into the artifact's left side
+  const spine = (st, ar, ps, pa, ss) => {
+    const down = ss === 'bottom';
+    if (!(down ? ar.y > st.y + st.h + 8 : ar.y + ar.h < st.y - 8) || pa.x > ps.x - 20) return null;
+    // close to the stack, clear of flow lines that run down between the columns
+    const x = Math.min(ar.x - 10, ps.x - 60), y = ps.y + (down ? 10 : -10);
+    return [ps, { x: ps.x, y }, { x, y }, { x, y: pa.y }, pa];
+  };
+  if (e.type === 'assoc') {
+    let pts = null;
+    if ((sa === 'bottom' || sa === 'top') && sb === 'left' && ARTIFACTS.has(b.type) && !ARTIFACTS.has(a.type)) pts = spine(a, b, p1, p2, sa);
+    else if ((sb === 'bottom' || sb === 'top') && sa === 'left' && ARTIFACTS.has(a.type) && !ARTIFACTS.has(b.type)) pts = spine(b, a, p2, p1, sb)?.reverse();
+    if (pts) return { pts, axis: 'x', base: pts[2].x, pos: pts[2].x, spreadable: false };
+  }
   // a note is met straight across from the other element when that is on its bracket (a wide note's centre is often not under its step)
   const meet = (pn, n, side, po) => {
     const c = side === 'top' || side === 'bottom' ? 'x' : 'y', lo = c === 'x' ? n.x + 16 : n.y + 8, hi = c === 'x' ? n.x + n.w - 10 : n.y + n.h - 8;
@@ -1683,6 +1697,26 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
     else {
       const usedBottom = d.edges.some(o => o !== e && o.from === e.from && o.fromSide === 'bottom');
       e.fromSide = e.toSide = usedBottom ? 'top' : 'bottom';
+    }
+  }
+  // artifacts stacked below (or above) their step: the nearest one keeps a straight line,
+  // the others branch off a shared spine left of the stack (see buildRoute)
+  const stacks = new Map();
+  for (const e of d.edges) {
+    if (e.type !== 'assoc' || !byId.has(e.from) || !byId.has(e.to) || !free(e)) continue;
+    const [s, a] = isArtifact(e.to) && !isArtifact(e.from) ? [e.from, e.to] : isArtifact(e.from) && !isArtifact(e.to) ? [e.to, e.from] : [];
+    if (!s || col.get(a) !== col.get(s)) continue;
+    const dl = level(a) - level(s);
+    if (!dl) continue;
+    const k = s + (dl > 0 ? '|down' : '|up');
+    if (!stacks.has(k)) stacks.set(k, []);
+    stacks.get(k).push({ e, s, dl });
+  }
+  for (const list of stacks.values()) {
+    list.sort((p, q) => Math.abs(p.dl) - Math.abs(q.dl));
+    for (const { e, s, dl } of list.slice(1)) {
+      const ss = dl > 0 ? 'bottom' : 'top';
+      if (e.from === s) { e.fromSide = ss; e.toSide = 'left'; } else { e.fromSide = 'left'; e.toSide = ss; }
     }
   }
 }
