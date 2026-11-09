@@ -929,7 +929,6 @@ function phasesSVG(d, interactive) {
   if (!hasPhases(d)) return '';
   const H = totalH(d), cols = phaseCols(d);
   let s = `<rect x="0" y="${-PHASE_HDR}" width="${CX}" height="${PHASE_HDR}" fill="#DCE3EA" stroke="#5B6673" stroke-width="1.5"/>`;
-  s += textBlock(['Phase'], CX / 2, -PHASE_HDR / 2, { size: 10.5, color: '#5B6673' });
   cols.forEach((c, i) => {
     const p = d.phases[i];
     if (i > 0) s += `<line x1="${c.left}" y1="0" x2="${c.left}" y2="${H}" stroke="#8A94A0" stroke-width="1" stroke-dasharray="6 4"/>`;

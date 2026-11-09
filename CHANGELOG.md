@@ -13,6 +13,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 - **Text over the subprocess marker**: a subprocess keeps its text above the plus box at the bottom; text that needs three lines is one size smaller. The same for System / Data boxes, whose text stays below the top curve.
 - **Label colour**: the text below document and system icons has the same grey as the text below events.
 
+### Changed
+
+- **Phase corner**: the cell above the lane headers is empty; it no longer says "Phase" (as in `.drawio` files already).
+
 ## [1.6.2] – 2026-11-09
 
 ### Fixed
