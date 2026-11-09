@@ -11,7 +11,7 @@ those areas; where this file says something different, this file wins.
 
 ## Rules
 
-- UI and docs in English. The app stays a single offline file: no CDN, no network calls (CI checks `src/app.html` for URLs).
+- UI and docs in English. The app stays a single offline file: no CDN, no network calls (CI checks `src/app.html` for URLs). The only exception is the update check (`checkForUpdate()`): at most once a week a GET of the latest release of this repository from the GitHub API, can be switched off in Settings, sends no data.
 - External libraries only via `vendor/` + `build.sh`, with a license compatible with Apache-2.0, listed in `THIRD_PARTY.md` and `NOTICE`.
 - No company names or branding in code, defaults or examples.
 - Do not break the file formats: old `.drawio` and JSON files must still open.

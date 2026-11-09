@@ -48,8 +48,8 @@ jobs:
           fi
       - name: No network references in the app
         run: |
-          # The app must stay offline: no URLs except the SVG namespace.
-          if grep -o -E "https?://[^\"' )<>]+" src/app.html | grep -v -x 'http://www.w3.org/2000/svg'; then
+          # The app must stay offline: no URLs except the SVG namespace and the update check (GitHub releases of this repository).
+          if grep -o -E "https?://[^\"' )<>]+" src/app.html | grep -v -x               -e 'http://www.w3.org/2000/svg'               -e 'https://api.github.com/repos/fly2nbc-oss/Swimlane-Editor/releases/latest'               -e 'https://github.com/fly2nbc-oss/Swimlane-Editor/releases/latest'               -e 'https://github.com/fly2nbc-oss/Swimlane-Editor/releases/'; then
             echo "::error::src/app.html references a network URL."
             exit 1
           fi

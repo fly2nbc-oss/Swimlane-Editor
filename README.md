@@ -40,7 +40,7 @@ Firefox and Safari cannot write files directly: **Save** downloads the file inst
 
 ## Your data and privacy
 
-The `.drawio` file is the document. The browser also keeps a working copy of the diagrams and the settings, which clearing the site data removes. Swimlane Editor loads nothing from the internet, sends nothing anywhere and has no telemetry.
+The `.drawio` file is the document. The browser also keeps a working copy of the diagrams and the settings, which clearing the site data removes. Swimlane Editor loads nothing from the internet and has no telemetry. The only request is the update check: at most once a week it asks GitHub for the latest release of Swimlane Editor and shows a notice when there is a newer one. Nothing from your diagrams is sent. Switch it off in **Settings**.
 
 ## More
 

@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.4.3] – 2026-11-09
+
+### Added
+
+- **Update check**: at most once a week the editor asks GitHub for the latest release and shows a notice with a download link when there is a newer version (*Not now*, *Skip this version*). Switch it off or use *Check now* in **Settings**. Nothing from your diagrams is sent; offline or behind a blocking proxy the check stays silent.
+
 ## [1.4.2] – 2026-11-09
 
 ### Fixed

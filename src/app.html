@@ -147,6 +147,10 @@ dialog::backdrop{background:rgba(15,23,32,.35)}
 #logoPreview img{max-height:56px;max-width:90%}
 #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1f2933;color:#fff;padding:8px 14px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50}
 #toast.show{opacity:.95}
+#updateBanner{position:fixed;top:56px;right:12px;z-index:40;display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;max-width:min(520px,calc(100vw - 24px));padding:10px 14px;background:var(--panel);border:1px solid var(--accent);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+#updateBanner span{flex:1 1 220px}
+#updateBanner a{color:var(--accent);font-weight:600}
+#updateBanner button{padding:2px 8px;font-size:12px}
 details{margin-top:16px;color:var(--muted);font-size:12px}
 details summary{cursor:pointer}
 details ul{padding-left:16px;margin:6px 0}
@@ -202,7 +206,7 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
     <span class="spacer"></span>
     <span id="saveState"></span>
     <button id="bHelp" class="icon" title="Help and keyboard shortcuts (H)" aria-label="Help"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.75c-.5.2-.8.6-.8 1.1v.4"/><circle cx="8" cy="11.6" r=".5" fill="currentColor"/></svg></button>
-    <button id="bSettings" class="icon" title="Settings: company name and logo for the PDF" aria-label="Settings"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h7M13 4h1M2 8h2M8 8h6M2 12h8M14 12h0"/><circle cx="11" cy="4" r="1.8"/><circle cx="6" cy="8" r="1.8"/><circle cx="12" cy="12" r="1.8"/></svg></button>
+    <button id="bSettings" class="icon" title="Settings: company name and logo for the PDF, update check" aria-label="Settings"><svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h7M13 4h1M2 8h2M8 8h6M2 12h8M14 12h0"/><circle cx="11" cy="4" r="1.8"/><circle cx="6" cy="8" r="1.8"/><circle cx="12" cy="12" r="1.8"/></svg></button>
     <button class="toggle on" id="bRight" title="Show or hide the right sidebar (Alt+2)" aria-label="Right sidebar"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="3.5" width="15" height="13" rx="2"/><rect x="12.5" y="3.5" width="5" height="13" rx="1" fill="currentColor" fill-opacity=".35"/></svg></button>
   </header>
 
@@ -251,6 +255,13 @@ kbd{background:#f1f3f5;border:1px solid var(--border);border-radius:4px;padding:
     <button id="bLogo">Choose logo&hellip;</button>
     <button id="bLogoRemove" class="danger">Remove logo</button>
   </div>
+  <label class="f">Updates</label>
+  <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="setUpdateAuto"> Check for a new version once a week</label>
+  <div class="row" style="align-items:center;margin-top:6px">
+    <button id="bUpdateNow">Check now</button>
+    <span id="updateResult" class="hint" style="margin:0" role="status"></span>
+  </div>
+  <p class="hint">The check asks GitHub for the latest release. Nothing from your diagrams is sent.</p>
   <p class="hint">Diagrams are kept in this browser. Use <b>Save</b> to write them as .drawio files (for example into a OneDrive or SharePoint folder) to keep and share them.</p>
   <div class="row" style="justify-content:flex-end;margin-top:12px">
     <button class="primary" id="bSettingsClose">Done</button>
@@ -310,7 +321,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.4.2'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.4.3'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -2263,6 +2274,8 @@ function harden(d) {
 function renderSettings() {
   $('#setCompany').value = store.settings.company || '';
   $('#logoPreview').innerHTML = store.settings.logo ? `<img src="${store.settings.logo.data}" alt="Logo">` : 'No logo';
+  $('#setUpdateAuto').checked = updateState().enabled;
+  $('#updateResult').textContent = '';
 }
 $('#bSettings').onclick = () => { renderSettings(); $('#settingsDlg').showModal(); };
 $('#bSettingsClose').onclick = () => $('#settingsDlg').close();
@@ -2287,6 +2300,100 @@ $('#logoInput').onchange = ev => {
   r.readAsDataURL(f);
 };
 
+/* ================= update check ================= */
+// Asks GitHub for the latest published release (no drafts or pre-releases). Automatically at most once a
+// week per browser: without login GitHub allows 60 requests per hour and IP, and behind a company NAT
+// many users share one IP. Can be switched off; errors (offline, proxy, limit) stay silent.
+// Only the release information is fetched, nothing from the app is sent.
+const RELEASES_API = 'https://api.github.com/repos/fly2nbc-oss/Swimlane-Editor/releases/latest';
+const RELEASES_PAGE = 'https://github.com/fly2nbc-oss/Swimlane-Editor/releases/latest';
+const RELEASES_PREFIX = 'https://github.com/fly2nbc-oss/Swimlane-Editor/releases/';
+const UPDATE_KEY = 'swimlane-editor.updateCheck.v1', UPDATE_EVERY = 7 * 24 * 3600 * 1000;
+const VERSION_RE = /^\d+(\.\d+){0,3}(-[0-9A-Za-z.]+)?$/;
+// a release link is only taken when it points into this repository
+const safeReleaseUrl = u => typeof u === 'string' && u.startsWith(RELEASES_PREFIX) && !/[\s"'<>]/.test(u) ? u : RELEASES_PAGE;
+// stored values are checked as strictly as GitHub's answer: under file:// all local HTML files share
+// localStorage, so another page could otherwise plant a fake update notice with its own download link
+function updateState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(UPDATE_KEY) || 'null');
+    if (s && typeof s === 'object') {
+      const latest = typeof s.latest === 'string' && VERSION_RE.test(s.latest) ? s.latest : undefined;
+      return {
+        enabled: s.enabled !== false,
+        checkedAt: typeof s.checkedAt === 'number' && s.checkedAt <= Date.now() ? s.checkedAt : 0,
+        latest, url: latest ? safeReleaseUrl(s.url) : undefined,
+        dismissed: typeof s.dismissed === 'string' ? s.dismissed : undefined
+      };
+    }
+  } catch (e) { /* storage not available */ }
+  return { enabled: true, checkedAt: 0 };
+}
+function saveUpdateState(patch) { try { localStorage.setItem(UPDATE_KEY, JSON.stringify({ ...updateState(), ...patch })); } catch (e) { /* ignore */ } }
+// "1.2.10" > "1.2.9"; a pre-release ("-rc1") is older than its final version
+function compareVersions(a, b) {
+  const parse = v => { const [core, pre] = String(v).trim().replace(/^v/i, '').split('-', 2); return { nums: core.split('.').map(n => parseInt(n, 10) || 0), pre: pre ?? null }; };
+  const x = parse(a), y = parse(b);
+  for (let i = 0; i < Math.max(x.nums.length, y.nums.length); i++) { const dd = (x.nums[i] ?? 0) - (y.nums[i] ?? 0); if (dd) return Math.sign(dd); }
+  if (x.pre === y.pre) return 0;
+  if (x.pre === null) return 1;
+  if (y.pre === null) return -1;
+  return x.pre < y.pre ? -1 : 1;
+}
+// force = manual check: ignores the interval and the switch, throws on errors.
+// Returns { latest, url, newer }, or null when nothing was checked (automatic) or the check failed.
+async function checkForUpdate(force = false) {
+  const s = updateState();
+  if (!force && (!s.enabled || (Date.now() - s.checkedAt < UPDATE_EVERY && s.latest))) {
+    if (!s.enabled || !s.latest) return null;
+    return { latest: s.latest, url: s.url || RELEASES_PAGE, newer: compareVersions(s.latest, APP_VERSION) > 0 };
+  }
+  try {
+    const res = await fetch(RELEASES_API, { headers: { Accept: 'application/vnd.github+json' }, cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' });
+    if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
+    const data = await res.json();
+    const latest = typeof data?.tag_name === 'string' ? data.tag_name.replace(/^v/i, '') : '';
+    if (!VERSION_RE.test(latest)) throw new Error('Unexpected answer from GitHub');
+    const url = safeReleaseUrl(data.html_url);
+    saveUpdateState({ checkedAt: Date.now(), latest, url });
+    return { latest, url, newer: compareVersions(latest, APP_VERSION) > 0 };
+  } catch (e) {
+    // a failure counts as a check too, so a blocking proxy does not slow down every start
+    saveUpdateState({ checkedAt: Date.now() });
+    if (force) throw e;
+    return null;
+  }
+}
+const shouldNotify = info => !!info && info.newer && updateState().dismissed !== info.latest;
+function showUpdateBanner(info) {
+  $('#updateBanner')?.remove();
+  const el = document.createElement('div'); el.id = 'updateBanner'; el.setAttribute('role', 'status');
+  const text = document.createElement('span');
+  text.textContent = `Swimlane Editor ${info.latest} is available (you have ${APP_VERSION}).`;
+  const link = document.createElement('a');
+  link.href = info.url; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'Download';
+  link.title = 'Open the release page. Installed with install.cmd? Run install.cmd of the new version to update.';
+  const later = document.createElement('button');
+  later.type = 'button'; later.textContent = 'Not now'; later.title = 'Hide until the next start';
+  later.onclick = () => el.remove();
+  const skip = document.createElement('button');
+  skip.type = 'button'; skip.textContent = 'Skip this version';
+  skip.onclick = () => { saveUpdateState({ dismissed: info.latest }); el.remove(); };
+  el.append(text, link, later, skip);
+  document.body.appendChild(el);
+}
+$('#setUpdateAuto').onchange = ev => saveUpdateState({ enabled: ev.target.checked });
+$('#bUpdateNow').onclick = async () => {
+  const btn = $('#bUpdateNow'), out = $('#updateResult');
+  btn.disabled = true; out.textContent = 'Checking…';
+  try {
+    const info = await checkForUpdate(true);
+    if (info?.newer) { out.textContent = `Version ${info.latest} is available.`; showUpdateBanner(info); }
+    else out.textContent = 'You have the latest version.';
+  } catch (e) { out.textContent = 'Could not check: ' + (e?.message || String(e)); }
+  finally { btn.disabled = false; }
+};
+
 /* ================= start ================= */
 // Opened as an app window (the Windows Start menu entry starts Edge with --app): fill the
 // screen once per window. Edge ignores the shortcut's "maximized" when it is already running.
@@ -2306,6 +2413,8 @@ $('#tips').open = store.settings.ui?.tips !== false;
 $('#tips').addEventListener('toggle', () => { (store.settings.ui ||= {}).tips = $('#tips').open; save(); });
 renderAll();
 requestAnimationFrame(fit);
+// update check shortly after the start, so it never slows the start down
+setTimeout(async () => { const info = await checkForUpdate(); if (shouldNotify(info)) showUpdateBanner(info); }, 4000);
 window.addEventListener('beforeunload', () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* ignore */ } });
 </script>
 </body>
