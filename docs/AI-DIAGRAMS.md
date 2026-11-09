@@ -91,6 +91,7 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 
 - The **order** follows from the connections. Every step stands to the right of the one before it.
 - Attach `document`, `data` and `note` to a step only with `"type": "assoc"`. They are then placed below that step.
+- The direction of an `assoc` to a `document` or `data` matters, the line gets an arrow: from the document to the step is an **input** (the step uses it), from the step to the document an **output** (the step creates or changes it). A `note` has no direction.
 - Every element except `start`, `document`, `data` and `note` has at least one incoming connection.
 - Every element except `end`, `document`, `data` and `note` has at least one outgoing connection.
 - A decision has at least two outgoing connections, all with a `label`.

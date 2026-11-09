@@ -379,6 +379,7 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 
 - The **order** follows from the connections. Every step stands to the right of the one before it.
 - Attach `document`, `data` and `note` to a step only with `"type": "assoc"`. They are then placed below that step.
+- The direction of an `assoc` to a `document` or `data` matters, the line gets an arrow: from the document to the step is an **input** (the step uses it), from the step to the document an **output** (the step creates or changes it). A `note` has no direction.
 - Every element except `start`, `document`, `data` and `note` has at least one incoming connection.
 - Every element except `end`, `document`, `data` and `note` has at least one outgoing connection.
 - A decision has at least two outgoing connections, all with a `label`.
@@ -925,7 +926,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.4.3'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.5.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -1126,6 +1127,14 @@ function edgeSides(d, e) {
 // A route has one movable middle segment: `k` is its offset from the automatic position along `axis`
 // ('x' = a vertical segment moved sideways, 'y' = a horizontal segment moved up or down).
 // e.bend (optional) is a manual offset; without it, routePlan() picks sides and offset.
+// the spine of an artifact stack runs down (or up) beside the stack; another element in its way (for example a step
+// in a lane between the step and its stack) means no spine: the line is routed like any other
+function spineBlocked(d, st, ar, x, y, y2) {
+  const lo = Math.min(y, y2), hi = Math.max(y, y2), cx = st.x + st.w / 2;
+  return d.nodes.some(n => n !== st && n !== ar && (
+    (n.x - 4 <= x && x <= n.x + n.w + 4 && n.y + n.h > lo && n.y < hi) ||
+    (n.y - 4 <= y && y <= n.y + n.h + 4 && n.x + n.w > Math.min(x, cx) && n.x < Math.max(x, cx))));
+}
 function buildRoute(d, e, sa, sb, k) {
   const a = nodeById(d, e.from), b = nodeById(d, e.to);
   const p1 = sidePoint(a, sa), p2 = sidePoint(b, sb), S = 18;
@@ -1135,6 +1144,7 @@ function buildRoute(d, e, sa, sb, k) {
     if (!(down ? ar.y > st.y + st.h + 8 : ar.y + ar.h < st.y - 8) || pa.x > ps.x - 20) return null;
     // close to the stack, clear of flow lines that run down between the columns
     const x = Math.min(ar.x - 10, ps.x - 60), y = ps.y + (down ? 10 : -10);
+    if (spineBlocked(d, st, ar, x, y, pa.y)) return null;
     return [ps, { x: ps.x, y }, { x, y }, { x, y: pa.y }, pa];
   };
   if (e.type === 'assoc') {
@@ -1378,10 +1388,22 @@ function nodeSVG(n, { interactive, selected }) {
   }
   return `<g class="node${selected ? ' sel' : ''}" data-kind="node" data-id="${esc(n.id)}">${shape}${label}${extra}</g>`;
 }
+// a dotted link between a step and a document or system/data shows the direction of the data (BPMN data association):
+// document -> step is an input, step -> document an output; a link to a note has no arrow
+function isDataAssoc(d, e) {
+  if (e.type !== 'assoc') return false;
+  const a = d.nodes.find(n => n.id === e.from), b = d.nodes.find(n => n.id === e.to);
+  return !!a && !!b && a.type !== 'note' && b.type !== 'note' && (a.type === 'document' || a.type === 'data' || b.type === 'document' || b.type === 'data');
+}
 function arrowHead(a, b, filled) {
   const L = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / L, uy = (b.y - a.y) / L, len = 10, half = 5;
   const bx = b.x - ux * len, by = b.y - uy * len;
   return `<polygon points="${b.x},${b.y} ${bx - uy * half},${by + ux * half} ${bx + uy * half},${by - ux * half}" fill="${filled ? '#3A4450' : '#ffffff'}" stroke="#3A4450" stroke-width="1.3" stroke-linejoin="round"/>`;
+}
+function openArrow(a, b) {
+  const L = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / L, uy = (b.y - a.y) / L, len = 8, half = 4.5;
+  const bx = b.x - ux * len, by = b.y - uy * len;
+  return `<polyline points="${bx - uy * half},${by + ux * half} ${b.x},${b.y} ${bx + uy * half},${by - ux * half}" fill="none" stroke="#3A4450" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>`;
 }
 function edgeSVG(d, e, { interactive, selected }) {
   const { pts, axis, pos } = routeInfo(d, e);
@@ -1393,6 +1415,7 @@ function edgeSVG(d, e, { interactive, selected }) {
   let s = selected ? `<path d="${dstr}" fill="none" stroke="#0a5ea8" stroke-opacity=".18" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>` : '';
   s += `<path d="${dstr}" fill="none" stroke="${color}" stroke-width="${selected ? 2.2 : 1.5}"${dash} stroke-linejoin="round"/>`;
   if (e.type === 'flow') s += arrowHead(pts[n - 2], pts[n - 1], true);
+  if (isDataAssoc(d, e)) s += openArrow(pts[n - 2], pts[n - 1]);
   if (e.type === 'message') { s += arrowHead(pts[n - 2], pts[n - 1], false); s += `<circle cx="${pts[0].x}" cy="${pts[0].y}" r="3.5" fill="#fff" stroke="#3A4450" stroke-width="1.3"/>`; }
   if (e.label) {
     const p = labelPos(d, e, pts), lines = wrap(e.label, 120, 11), lw = Math.max(...lines.map(l => measure(l, 11))) + 8, lh = lines.length * 13.75 + 4;
@@ -2330,7 +2353,9 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
   for (const list of stacks.values()) {
     list.sort((p, q) => Math.abs(p.dl) - Math.abs(q.dl));
     for (const { e, s, dl } of list.slice(1)) {
-      const ss = dl > 0 ? 'bottom' : 'top';
+      const ss = dl > 0 ? 'bottom' : 'top', st = byId.get(s), ar = byId.get(e.from === s ? e.to : e.from);
+      const ps = sidePoint(st, ss), y = ps.y + (dl > 0 ? 10 : -10);
+      if (spineBlocked(d, st, ar, Math.min(ar.x - 10, ps.x - 60), y, ar.y + ar.h / 2)) continue;
       if (e.from === s) { e.fromSide = ss; e.toSide = 'left'; } else { e.fromSide = 'left'; e.toSide = ss; }
     }
   }
@@ -2438,7 +2463,7 @@ function drawioDiagram(d) {
   for (const e of d.edges) {
     if (!ids.has(e.from) || !ids.has(e.to)) continue;
     const [sa, sb] = routeInfo(d, e).sides, A = ANCHOR[sa], B = ANCHOR[sb];
-    const style = DRAWIO_EDGE[e.type || 'flow'] + `strokeColor=#3A4450;fontSize=11;exitX=${A[0]};exitY=${A[1]};exitDx=0;exitDy=0;entryX=${B[0]};entryY=${B[1]};entryDx=0;entryDy=0;`;
+    const style = (isDataAssoc(d, e) ? DRAWIO_EDGE.assoc.replace('endArrow=none;', 'endArrow=open;endFill=0;') : DRAWIO_EDGE[e.type || 'flow']) + `strokeColor=#3A4450;fontSize=11;exitX=${A[0]};exitY=${A[1]};exitDx=0;exitDy=0;entryX=${B[0]};entryY=${B[1]};entryDx=0;entryDy=0;`;
     cells.push(`<object id="${xa('e-' + e.id)}" label="${xa(htmlValue(e.label))}"${props({ swl: 'edge', swlType: e.type || 'flow', swlFromSide: e.fromSide || 'auto', swlToSide: e.toSide || 'auto', ...(e.bend ? { swlBend: e.bend } : {}) })}><mxCell style="${xa(style)}" edge="1" parent="1" source="${xa('n-' + e.from)}" target="${xa('n-' + e.to)}"><mxGeometry relative="1" as="geometry"/></mxCell></object>`);
   }
   return `<diagram id="${xa(d.id)}" name="${xa(d.title || 'Diagram')}"><mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0"><root>${cells.join('')}</root></mxGraphModel></diagram>`;
@@ -2554,7 +2579,7 @@ function modelToDiagram(model, pageName) {
   });
   d.edges = all.filter(c => c.edge && idMap.has(c.source) && idMap.has(c.target)).map(c => {
     const label = [c.text, ...children(c.id).map(x => x.text)].filter(Boolean).join(' ');
-    const type = EDGE_TYPES[c.a.swlType] ? c.a.swlType : (c.st.endArrow === 'none' ? 'assoc' : c.st.dashed === '1' ? 'message' : 'flow');
+    const type = EDGE_TYPES[c.a.swlType] ? c.a.swlType : (c.st.endArrow === 'none' || c.st.dashPattern ? 'assoc' : c.st.dashed === '1' ? 'message' : 'flow');
     return { id: strip(c.id, 'e-'), from: idMap.get(c.source), to: idMap.get(c.target), label, type,
       fromSide: c.a.swlFromSide || anchorSide(c.st.exitX, c.st.exitY), toSide: c.a.swlToSide || anchorSide(c.st.entryX, c.st.entryY), ...(c.a.swlBend ? { bend: +c.a.swlBend } : {}) };
   });

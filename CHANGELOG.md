@@ -7,6 +7,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.5.0] – 2026-11-09
+
+### Changed
+
+- **Input and output documents**: a dotted line between a step and a document or system/data now has an open arrow, as in BPMN. From the document to the step means input, from the step to the document means output. A line to a note stays without an arrow. Diagrams so far connect step → document, so their documents now show as output; *Reverse direction* in the details panel turns one into an input. The arrow is also kept in `.drawio` files, and the AI guide explains the direction.
+
+### Fixed
+
+- **Document stack far below its step**: when another element lies between a step and its documents, the lines no longer branch off the shared spine through that element; they are routed like other lines.
+
 ## [1.4.3] – 2026-11-09
 
 ### Added
