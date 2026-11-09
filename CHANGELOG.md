@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+### Changed
+
+- **Inputs from above, outputs below**: a document or system/data line always enters its step at the top or the left (input) and leaves it at the right or the bottom (output), also for lines you draw yourself. Arrange puts the inputs of a step in a row above it, the outputs in a row below it; input icons have their text above them.
+- **Element tiles**: in a diagram with document icons, the Document and System / Data tiles show the icons too.
+
 ## [1.6.0] – 2026-11-09
 
 ### Added

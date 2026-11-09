@@ -316,6 +316,20 @@ const iconArt = (d, n) => !!d && d.artifactStyle === 'icon' && !!ICON_SIZE[n.typ
 const typeSize = (type, d) => (d && d.artifactStyle === 'icon' && ICON_SIZE[type]) || TYPES[type];
 const labelBelow = (d, n) => LABEL_BELOW.has(n.type) || iconArt(d, n);
 // the label below an element: lines, font size, half its width
+// an icon above the step it is an input of has its text above (the line leaves at its bottom)
+function iconLabelTop(d, n) {
+  if (!iconArt(d, n)) return false;
+  return d.edges.some(e => e.type === 'assoc' && e.from === n.id && (t => t && !ARTIFACTS.has(t.type) && t.y >= n.y + n.h + 10)(d.nodes.find(o => o.id === e.to)));
+}
+// data associations: an input enters its step at the top or the left, an output leaves it at the right or the bottom.
+// Returns which end is the step and the sides allowed there, or null for other connections.
+function dataStepSides(d, e) {
+  if (!isDataAssoc(d, e)) return null;
+  const a = nodeById(d, e.from), b = nodeById(d, e.to);
+  if (!ARTIFACTS.has(b.type)) return { end: 'to', step: b, art: a, allowed: ['top', 'left'] };
+  if (!ARTIFACTS.has(a.type)) return { end: 'from', step: a, art: b, allowed: ['bottom', 'right'] };
+  return null;
+}
 function belowLabel(d, n) {
   const icon = iconArt(d, n), size = icon ? ICON_FONT : 11;
   return { lines: wrap(n.text, icon ? ICON_LABEL_W : 130, size), size, half: icon ? ICON_LABEL_W / 2 : 70 };
@@ -530,6 +544,19 @@ function autoSides(a, b) {
 function edgeSides(d, e) {
   const a = nodeById(d, e.from), b = nodeById(d, e.to);
   let [sa, sb] = autoSides(a, b);
+  const ds = dataStepSides(d, e);
+  if (ds) {
+    const input = ds.end === 'to', cur = input ? sb : sa;
+    if (!ds.allowed.includes(cur)) {
+      const st = ds.step, ac = center(ds.art);
+      // input: from above (top) unless the artifact lies left of the step; output: below (bottom) unless it lies to the right
+      const side = input ? (ac.x < st.x && ac.y >= st.y ? 'left' : 'top') : (ac.x > st.x + st.w && ac.y <= st.y + st.h ? 'right' : 'bottom');
+      const other = side === 'top' ? (ac.y < st.y ? 'bottom' : ac.x < st.x ? 'right' : 'left')
+        : side === 'bottom' ? (ac.y > st.y + st.h ? 'top' : ac.x > st.x + st.w ? 'left' : 'right')
+        : side === 'left' ? 'right' : 'left';
+      if (input) { sb = side; sa = other; } else { sa = side; sb = other; }
+    }
+  }
   if (e.fromSide && e.fromSide !== 'auto') sa = e.fromSide;
   if (e.toSide && e.toSide !== 'auto') sb = e.toSide;
   return [sa, sb];
@@ -559,17 +586,19 @@ function buildRoute(d, e, sa, sb, k) {
   };
   // document row (comb): down from the bottom of the step to a bus just above the row, along it, down into the
   // artifact; all artifacts of a row share the bus. Only for sides set to bottom and top (autoLayout does that).
+  // inputs sit in a row above their step: up from the step's top to a bus just below the row
   const comb = (st, ar, ps, pa) => {
-    const base = pa.y - COMB_BUS, y = base + k;
-    if (ARTIFACTS.has(st.type) || !ICON_SIZE[ar.type] || y < ps.y + 8 || y > pa.y - 4) return null;
+    const below = pa.y > ps.y, base = below ? pa.y - COMB_BUS : pa.y + COMB_BUS, y = base + k;
+    if (ARTIFACTS.has(st.type) || !ICON_SIZE[ar.type] || (below ? y < ps.y + 8 || y > pa.y - 4 : y > ps.y - 8 || y < pa.y + 4)) return null;
     return { pts: [ps, { x: ps.x, y }, { x: pa.x, y }, pa], base, pos: y };
   };
   if (e.type === 'assoc') {
     let pts = null, cb = null;
     if ((sa === 'bottom' || sa === 'top') && sb === 'left' && ARTIFACTS.has(b.type) && !ARTIFACTS.has(a.type)) pts = spine(a, b, p1, p2, sa);
     else if ((sb === 'bottom' || sb === 'top') && sa === 'left' && ARTIFACTS.has(a.type) && !ARTIFACTS.has(b.type)) pts = spine(b, a, p2, p1, sb)?.reverse();
-    else if (e.fromSide === 'bottom' && e.toSide === 'top') cb = comb(a, b, p1, p2);
-    else if (e.fromSide === 'top' && e.toSide === 'bottom') { cb = comb(b, a, p2, p1); if (cb) cb.pts.reverse(); }
+    else if ((e.fromSide === 'bottom' && e.toSide === 'top') || (e.fromSide === 'top' && e.toSide === 'bottom')) {
+      if (!ARTIFACTS.has(a.type)) cb = comb(a, b, p1, p2); else { cb = comb(b, a, p2, p1); if (cb) cb.pts.reverse(); }
+    }
     if (pts) return { pts, axis: 'x', base: pts[2].x, pos: pts[2].x, spreadable: false };
     if (cb) return { pts: simplify(cb.pts), axis: 'y', base: cb.base, pos: cb.pos, spreadable: false };
   }
@@ -683,7 +712,9 @@ function routePlan(d) {
     };
     tryCombo(sides0[0], sides0[1], 0);
     if (bestCost >= 5000) {
-      const fromC = e.fromSide && e.fromSide !== 'auto' ? [e.fromSide] : SIDE_LIST, toC = e.toSide && e.toSide !== 'auto' ? [e.toSide] : SIDE_LIST;
+      const ds = dataStepSides(d, e);
+      const fromC = e.fromSide && e.fromSide !== 'auto' ? [e.fromSide] : ds && ds.end === 'from' ? ds.allowed : SIDE_LIST;
+      const toC = e.toSide && e.toSide !== 'auto' ? [e.toSide] : ds && ds.end === 'to' ? ds.allowed : SIDE_LIST;
       for (const sa of fromC) for (const sb of toC) if (sa !== sides0[0] || sb !== sides0[1]) tryCombo(sa, sb, 60);
     }
     return best;
@@ -764,7 +795,7 @@ function labelPos(d, e, pts) {
 
 /* ================= rendering ================= */
 // icon: document or system/data drawn as a symbol with the text below (see artifactStyle)
-function nodeSVG(n, { interactive, selected, icon }) {
+function nodeSVG(n, { interactive, selected, icon, labelTop }) {
   const st = STYLE[n.type] || STYLE.task, fill = n.color || st.fill, s = st.stroke;
   const { x, y, w, h } = n, cx = x + w / 2, cy = y + h / 2;
   let shape = '', label = '';
@@ -812,7 +843,10 @@ function nodeSVG(n, { interactive, selected, icon }) {
       label = textBlock(wrap(n.text, w - 12), cx, cy);
   }
   if (LABEL_BELOW.has(n.type)) label = textBlock(wrap(n.text, 130, 11), cx, y + h + 3, { size: 11, mode: 'top', color: '#3d4752' });
-  else if (icon && ICON_SIZE[n.type]) label = textBlock(wrap(n.text, ICON_LABEL_W, ICON_FONT), cx, y + h + 3, { size: ICON_FONT, mode: 'top', color: '#1f2933' });
+  else if (icon && ICON_SIZE[n.type]) {
+    const ls = wrap(n.text, ICON_LABEL_W, ICON_FONT);
+    label = textBlock(ls, cx, labelTop ? y - 4 - ls.length * ICON_FONT * 1.25 : y + h + 3, { size: ICON_FONT, mode: 'top', color: '#1f2933' });
+  }
   // a gateway's lines leave and enter at its corners (also the bottom one): its text sits below right, clear of them
   if (n.type === 'parallel') label = textBlock(wrap(n.text, 90, 11), cx + 14, cy + h * 0.38, { size: 11, mode: 'top', anchor: 'start', color: '#3d4752' });
   let extra = '';
@@ -918,8 +952,8 @@ function contentBounds(d) {
   let x1 = 0, y1 = hasPhases(d) ? -PHASE_HDR : 0, x2 = poolW(d), y2 = totalH(d);
   for (const n of d.nodes) {
     x1 = Math.min(x1, n.x); x2 = Math.max(x2, n.x + n.w);
-    const lb = labelBelow(d, n) ? belowLabel(d, n) : null;
-    y1 = Math.min(y1, n.y); y2 = Math.max(y2, n.y + n.h + (lb && n.text ? 16 + 14 * (lb.lines.length - 1) : 0));
+    const lb = labelBelow(d, n) ? belowLabel(d, n) : null, top = lb && n.text && iconLabelTop(d, n);
+    y1 = Math.min(y1, n.y - (top ? 6 + lb.lines.length * lb.size * 1.25 : 0)); y2 = Math.max(y2, n.y + n.h + (lb && n.text && !top ? 16 + 14 * (lb.lines.length - 1) : 0));
     if (lb) { x1 = Math.min(x1, n.x + n.w / 2 - lb.half); x2 = Math.max(x2, n.x + n.w / 2 + (n.type === 'parallel' ? 105 : lb.half)); }
   }
   for (const e of d.edges) for (const p of route(d, e)) { x1 = Math.min(x1, p.x); x2 = Math.max(x2, p.x); y1 = Math.min(y1, p.y); y2 = Math.max(y2, p.y); }
@@ -929,7 +963,7 @@ function diagramMarkup(d, opts) {
   const valid = new Set(d.nodes.map(n => n.id));
   let s = lanesSVG(d, opts.interactive) + phasesSVG(d, opts.interactive);
   for (const e of d.edges) if (valid.has(e.from) && valid.has(e.to)) s += edgeSVG(d, e, { interactive: opts.interactive, selected: opts.interactive && selEdge === e.id });
-  for (const n of d.nodes) s += nodeSVG(n, { interactive: opts.interactive, selected: opts.interactive && sel.has(n.id), icon: iconArt(d, n) });
+  for (const n of d.nodes) s += nodeSVG(n, { interactive: opts.interactive, selected: opts.interactive && sel.has(n.id), icon: iconArt(d, n), labelTop: iconLabelTop(d, n) });
   return s;
 }
 function exportSVGString(d) {
@@ -974,7 +1008,7 @@ function renderAll() {
     panel.innerHTML = '';
     return;
   }
-  renderCanvas(); renderList(); renderPanel(); renderSaveState();
+  renderCanvas(); renderList(); renderPanel(); renderSaveState(); renderPalette();
 }
 
 /* ================= left: list & palette ================= */
@@ -1078,12 +1112,20 @@ document.addEventListener('keydown', ev => {
   if ((mod && k === 'o') || (!mod && /^(h|\?|f1|escape|tab|enter| )$/.test(k)) || (ev.altKey && /^(Digit|Numpad)[012]$/.test(ev.code))) return;
   ev.stopImmediatePropagation(); if (mod) ev.preventDefault();
 }, true);
-function paletteIcon(type) {
-  const n = { id: 'p', type, x: 0, y: 0, w: TYPES[type].w, h: TYPES[type].h, text: '' };
+function paletteIcon(type, icon) {
+  const t = icon && ICON_SIZE[type] || TYPES[type], n = { id: 'p', type, x: 0, y: 0, w: t.w, h: t.h, text: '' };
   const sc = Math.min(40 / n.w, 26 / n.h, 1), ox = (44 - n.w * sc) / 2, oy = (30 - n.h * sc) / 2;
-  return `<svg viewBox="0 0 44 30"><g transform="translate(${ox},${oy}) scale(${sc})">${nodeSVG(n, {})}</g></svg>`;
+  return `<svg viewBox="0 0 44 30"><g transform="translate(${ox},${oy}) scale(${sc})">${nodeSVG(n, { icon: icon && !!ICON_SIZE[type] })}</g></svg>`;
 }
-$('#palette').innerHTML = Object.keys(TYPES).map(t => `<div class="tile" draggable="true" tabindex="0" role="button" data-type="${t}" title="${TYPES[t].label}: drag onto a lane, or click to add it after the selected element">${paletteIcon(t)}<span>${TYPES[t].label}</span></div>`).join('');
+// the tiles draw documents and systems/data the way the current diagram does (artifactStyle)
+let paletteStyle = null;
+function renderPalette() {
+  const icon = !!D && D.artifactStyle === 'icon';
+  if (paletteStyle === icon) return;
+  paletteStyle = icon;
+  $('#palette').innerHTML = Object.keys(TYPES).map(t => `<div class="tile" draggable="true" tabindex="0" role="button" data-type="${t}" title="${TYPES[t].label}: drag onto a lane, or click to add it after the selected element">${paletteIcon(t, icon)}<span>${TYPES[t].label}</span></div>`).join('');
+}
+renderPalette();
 $('#palette').addEventListener('dragstart', ev => { const t = ev.target.closest('.tile'); if (t) ev.dataTransfer.setData('text/plain', 'swimlane:' + t.dataset.type); });
 $('#palette').addEventListener('click', ev => { const t = ev.target.closest('.tile'); if (t) quickAdd(t.dataset.type); });
 $('#palette').addEventListener('keydown', ev => {
@@ -1349,7 +1391,7 @@ function cancelEditor() { if (!editor) return; editor.el.remove(); editor = null
 function editNode(n) {
   if (!n) return;
   let box = { x: n.x, y: n.y, w: n.w, h: n.h };
-  if (labelBelow(D, n)) box = { x: n.x + n.w / 2 - 70, y: n.y + n.h + 2, w: 140, h: 44 };
+  if (labelBelow(D, n)) box = { x: n.x + n.w / 2 - 70, y: iconLabelTop(D, n) ? n.y - 46 : n.y + n.h + 2, w: 140, h: 44 };
   if (n.type === 'parallel') box = { x: n.x + n.w / 2 + 10, y: n.y + n.h * 0.88, w: 110, h: 44 };
   openEditor({ ...box, value: n.text, align: n.type === 'note' ? 'left' : 'center', onCommit: v => { n.text = v; } });
 }
@@ -1764,15 +1806,15 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
     }
     place(n.id, hasCol ? Math.max(0, Math.floor(+hc) || 0) : anchor ? col.get(anchor) : 0, li);
   }
-  // document rows: inputs first, then outputs; lines of at most COMB_MAX artifacts, each centred under the step
+  // document rows: inputs in a row above the step, outputs in a row below it; lines of at most COMB_MAX artifacts,
+  // each centred on the step (labels of input icons sit above them, see iconLabelTop)
   const foot = n => iconArt(d, n) ? { w: Math.max(n.w, ICON_LABEL_W), h: n.h + 5 + belowLabel(d, n).lines.length * ICON_FONT * 1.25 } : { w: n.w, h: n.h };
-  const blocks = new Map();
-  for (const [s, list] of comb) {
-    list.sort((p, q) => (q.input ? 1 : 0) - (p.input ? 1 : 0));
-    const per = COMB_MAX[d.artifactStyle === 'icon' ? 'icon' : 'box'], lines = [];
+  const per = COMB_MAX[d.artifactStyle === 'icon' ? 'icon' : 'box'];
+  const makeBlock = list => {
+    const lines = [];
     for (let i = 0; i < list.length; i += per) lines.push(list.slice(i, i + per).map(x => byId.get(x.id)));
     const info = lines.map((ln, i) => {
-      // a full line with more lines below leaves a gap exactly under the step, the line to the next one runs there
+      // a full line with more lines beyond it leaves a gap exactly at the step, the line to the far one runs there
       const span = a => a.reduce((x, n) => x + foot(n).w, 0) + ART_GAP * (a.length - 1), h = Math.max(...ln.map(n => foot(n).h));
       if (i < lines.length - 1 && ln.length > 1) {
         const half = ln.length / 2, left = span(ln.slice(0, half)), right = span(ln.slice(half));
@@ -1780,37 +1822,49 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
       }
       return { ln, w: span(ln), h };
     });
-    blocks.set(s, { lines: info, w: Math.max(...info.map(l => l.w)), h: info.reduce((a, l) => a + l.h, 0) + COMB_LINE_GAP * (info.length - 1) });
+    return { lines: info, w: Math.max(...info.map(l => l.w)), h: info.reduce((a, l) => a + l.h, 0) + COMB_LINE_GAP * (info.length - 1) };
+  };
+  const blocks = new Map(), blocksIn = new Map();
+  for (const [s, list] of comb) {
+    const ins = list.filter(x => x.input), outs = list.filter(x => !x.input);
+    if (outs.length) blocks.set(s, makeBlock(outs));
+    if (ins.length) blocksIn.set(s, makeBlock(ins));
   }
   // column widths and positions: as wide as the widest document row in the column needs
   const colW = [];
-  for (const [s, b] of blocks) { const c = col.get(s); colW[c] = Math.max(colW[c] || COL_W, Math.ceil((b.w + 30) / GRID) * GRID); }
+  for (const bl of [blocks, blocksIn]) for (const [s, b] of bl) { const c = col.get(s); colW[c] = Math.max(colW[c] || COL_W, Math.ceil((b.w + 30) / GRID) * GRID); }
   const cw = c => colW[c] || COL_W, colL = c => { let x = COL0 - COL_W / 2; for (let i = 0; i < c; i++) x += cw(i); return x; };
   const colC = c => colL(c) + cw(c) / 2, colR = c => colL(c) + cw(c);
-  // 6. lane heights and positions; a row is taller by the document rows of its steps
+  // 6. lane heights and positions; a row is taller by the document rows of its steps (above and below)
   const rows = d.lanes.map((l, i) => Math.max(1, ...nodes.filter(n => lane.get(n.id) === i).map(n => row.get(n.id) + 1)));
-  const rowH = rows.map(k => Array(k).fill(ROW_H));
-  for (const [s, b] of blocks) { const n = byId.get(s), li = lane.get(s), r = row.get(s); rowH[li][r] = Math.max(rowH[li][r], Math.ceil((ROW_H / 2 + n.h / 2 + COMB_GAP + b.h + 12) / GRID) * GRID); }
+  const above = rows.map(k => Array(k).fill(0));
+  for (const [s, b] of blocksIn) { const n = byId.get(s), li = lane.get(s), r = row.get(s); above[li][r] = Math.max(above[li][r], Math.ceil((b.h + COMB_GAP + 6 - (ROW_H / 2 - n.h / 2)) / GRID) * GRID); }
+  const rowH = rows.map((k, li) => above[li].map(a => a + ROW_H));
+  for (const [s, b] of blocks) { const n = byId.get(s), li = lane.get(s), r = row.get(s); rowH[li][r] = Math.max(rowH[li][r], above[li][r] + Math.ceil((ROW_H / 2 + n.h / 2 + COMB_GAP + b.h + 12) / GRID) * GRID); }
   const rowTop = (li, r) => rowH[li].slice(0, r).reduce((a, h) => a + h, 0);
   d.lanes.forEach((l, i) => { l.height = Math.max(140, rowTop(i, rows[i]) + 30); });
   const tops = laneTops(d);
   for (const n of nodes) {
-    const li = lane.get(n.id), cx = colC(col.get(n.id)), cy = tops[li] + 15 + rowTop(li, row.get(n.id)) + ROW_H / 2;
+    const li = lane.get(n.id), r = row.get(n.id), cx = colC(col.get(n.id)), cy = tops[li] + 15 + rowTop(li, r) + above[li][r] + ROW_H / 2;
     n.x = cx - n.w / 2; n.y = cy - n.h / 2;
   }
-  for (const [s, b] of blocks) {
-    const st = byId.get(s), cx = st.x + st.w / 2;
-    let y = st.y + st.h + COMB_GAP;
+  const placeBlock = (b, cx, y0, up) => {
+    // up: lines grow upwards from the step, each line's artifacts end on the same bottom (the bus runs below them)
+    let y = y0;
     for (const l of b.lines) {
       let x = l.left !== undefined ? cx - (ART_GAP + ART_MID) / 2 - l.left : cx - l.w / 2;
       l.ln.forEach((n, i) => {
         const f = foot(n);
-        n.x = Math.round(x + f.w / 2 - n.w / 2); n.y = Math.round(y);
+        n.x = Math.round(x + f.w / 2 - n.w / 2);
+        n.y = Math.round(up ? y - n.h : y);
         x += f.w + ART_GAP + (l.left !== undefined && i === l.ln.length / 2 - 1 ? ART_MID : 0);
       });
-      y += l.h + COMB_LINE_GAP;
+      y += up ? -(l.h + COMB_LINE_GAP) : l.h + COMB_LINE_GAP;
     }
-  }
+  };
+  for (const [s, b] of blocks) { const st = byId.get(s); placeBlock(b, st.x + st.w / 2, st.y + st.h + COMB_GAP, false); }
+  // above the step the label of an icon is above it too: the artifact's bottom is COMB_GAP above the step
+  for (const [s, b] of blocksIn) { const st = byId.get(s); placeBlock(b, st.x + st.w / 2, st.y - COMB_GAP, true); }
   // notes fill their cell and reach into the next one when it is free in their row (not across a phase border, see 7.);
   // the top stays, a note grows downwards with its text
   for (const n of nodes) if (n.type === 'note' && isArtifact(n.id)) {
@@ -1864,11 +1918,11 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
       e.fromSide = e.toSide = usedBottom ? 'top' : 'bottom';
     }
   }
-  // document rows: down from the step to the row (output) or up into the step (input), see buildRoute
+  // document rows: down from the step to the row below (output), down from the row above into the step (input), see buildRoute
   for (const [s, list] of comb) for (const { id } of list) for (const e of d.edges) {
     if (e.type !== 'assoc' || !free(e)) continue;
     if (e.from === s && e.to === id) { e.fromSide = 'bottom'; e.toSide = 'top'; }
-    else if (e.from === id && e.to === s) { e.fromSide = 'top'; e.toSide = 'bottom'; }
+    else if (e.from === id && e.to === s) { e.fromSide = 'bottom'; e.toSide = 'top'; }
   }
   // artifacts stacked below (or above) their step: the nearest one keeps a straight line,
   // the others branch off a shared spine left of the stack (see buildRoute)
@@ -1994,7 +2048,7 @@ function drawioDiagram(d) {
   }
   for (const n of d.nodes) {
     const li = laneIndexAt(d, n.y + n.h / 2), st = STYLE[n.type];
-    let style = iconArt(d, n) ? DRAWIO_NODE[n.type].replace('whiteSpace=wrap;', '') + `strokeColor=${st.stroke};verticalLabelPosition=bottom;verticalAlign=top;fontSize=10;` : DRAWIO_NODE[n.type] + `strokeColor=${st.stroke};fontSize=12;`;
+    let style = iconArt(d, n) ? DRAWIO_NODE[n.type].replace('whiteSpace=wrap;', '') + `strokeColor=${st.stroke};` + (iconLabelTop(d, n) ? 'verticalLabelPosition=top;verticalAlign=bottom;' : 'verticalLabelPosition=bottom;verticalAlign=top;') + 'fontSize=10;' : DRAWIO_NODE[n.type] + `strokeColor=${st.stroke};fontSize=12;`;
     style += n.type === 'note' ? `fillColor=${n.color || 'none'};` : `fillColor=${n.color || st.fill};`;
     cells.push(vertex('n-' + n.id, 'lane-' + d.lanes[li].id, htmlValue(n.text), style, n.x - POOL_HDR, n.y - tops[li], n.w, n.h, { swl: 'node', swlType: n.type, swlColor: n.color }));
   }
