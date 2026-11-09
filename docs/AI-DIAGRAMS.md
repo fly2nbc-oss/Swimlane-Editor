@@ -74,6 +74,7 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 | `task` | Task |
 | `subprocess` | Subprocess (a process of its own, with details elsewhere) |
 | `decision` | Decision; text as a short question ending in "?" |
+| `parallel` | Parallel gateway: all outgoing paths run at the same time; text may be empty (`""`) |
 | `event` | Wait or event, e.g. "Wait 3 days", "Invoice received" |
 | `document` | Document, e.g. form, contract |
 | `data` | IT system or database, e.g. "ERP", "CRM" |
@@ -95,6 +96,7 @@ Output **only valid JSON** in this format. No comments, no coordinates: the edit
 - Every element except `start`, `document`, `data` and `note` has at least one incoming connection.
 - Every element except `end`, `document`, `data` and `note` has at least one outgoing connection.
 - A decision has at least two outgoing connections, all with a `label`.
+- For work done at the same time, split with a `parallel` into two or more branches, then join the branches again with a second `parallel`. Its connections need no `label`.
 - Loops are allowed, for example "No" back to an earlier step.
 - A step never sits in an earlier phase than the step before it.
 

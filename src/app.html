@@ -298,6 +298,7 @@ const TYPES = {
   start:      { label:'Start',         w:36,  h:36, text:'Start' },
   task:       { label:'Task',          w:120, h:60, text:'Task' },
   decision:   { label:'Decision',      w:100, h:70, text:'Decision?' },
+  parallel:   { label:'Parallel',      w:50,  h:50, text:'' },
   end:        { label:'End',           w:36,  h:36, text:'End' },
   subprocess: { label:'Subprocess',    w:120, h:60, text:'Subprocess' },
   event:      { label:'Wait / Event',  w:36,  h:36, text:'' },
@@ -305,12 +306,13 @@ const TYPES = {
   data:       { label:'System / Data', w:80,  h:60, text:'System' },
   note:       { label:'Note',          w:140, h:50, text:'Note' }
 };
-const LABEL_BELOW = new Set(['start','end','event']);
+const LABEL_BELOW = new Set(['start','end','event','parallel']);
 const ROUND = new Set(['start','end','event']);
+const GATEWAYS = new Set(['decision','parallel']); // diamonds: branches leave from different corners
 const STYLE = {
   task:{fill:'#EAF2FB',stroke:'#2F6EA5'}, subprocess:{fill:'#EAF2FB',stroke:'#2F6EA5'},
   start:{fill:'#E6F5EA',stroke:'#2E8B57'}, end:{fill:'#FBE9E7',stroke:'#B03A2E'},
-  event:{fill:'#FFF5DD',stroke:'#C98A0B'}, decision:{fill:'#FFF5DD',stroke:'#C98A0B'},
+  event:{fill:'#FFF5DD',stroke:'#C98A0B'}, decision:{fill:'#FFF5DD',stroke:'#C98A0B'}, parallel:{fill:'#FFF5DD',stroke:'#C98A0B'},
   document:{fill:'#F2F4F6',stroke:'#5B6673'}, data:{fill:'#F2F4F6',stroke:'#5B6673'},
   note:{fill:'none',stroke:'#8A94A0'}
 };
@@ -665,10 +667,10 @@ function routePlan(d) {
   };
   const free = e => !Number.isFinite(e.bend) && nodeById(d, e.from) && nodeById(d, e.to);
   for (const e of d.edges) if (free(e)) plan.set(e.id, planEdge(e, new Set()));
-  // branches of a decision leave from different corners: the straightest branch keeps a shared corner,
+  // branches of a decision or parallel gateway leave from different corners: the straightest branch keeps a shared corner,
   // the others (with side 'auto') look for another one
   for (const n of d.nodes) {
-    if (n.type !== 'decision') continue;
+    if (!GATEWAYS.has(n.type)) continue;
     const outs = d.edges.filter(e => e.from === n.id && nodeById(d, e.to));
     const side = e => plan.get(e.id)?.sides[0] || edgeSides(d, e)[0];
     const shape = e => { const pl = plan.get(e.id), pts = pl ? buildRoute(d, e, pl.sides[0], pl.sides[1], pl.k).pts : route(d, e); return pts.length * 1e5 + pathLen(pts); };
@@ -733,7 +735,7 @@ function pointAlong(pts, dist) {
 function pathLen(pts) { let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); return L; }
 function labelPos(d, e, pts) {
   const a = nodeById(d, e.from), L = pathLen(pts);
-  if (a.type === 'decision') { const first = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y); return pointAlong(pts, Math.min(first / 2 + 6, 34, L / 2)); }
+  if (GATEWAYS.has(a.type)) { const first = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y); return pointAlong(pts, Math.min(first / 2 + 6, 34, L / 2)); }
   return pointAlong(pts, L / 2);
 }
 
@@ -752,6 +754,9 @@ function nodeSVG(n, { interactive, selected }) {
     case 'decision':
       shape = `<polygon points="${cx},${y} ${x + w},${cy} ${cx},${y + h} ${x},${cy}" fill="${fill}" stroke="${s}" stroke-width="1.5" stroke-linejoin="round"/>`;
       label = textBlock(wrap(n.text, w * 0.62, 11), cx, cy, { size: 11 }); break;
+    case 'parallel': // BPMN parallel gateway: diamond with a bold plus, text below (LABEL_BELOW)
+      shape = `<polygon points="${cx},${y} ${x + w},${cy} ${cx},${y + h} ${x},${cy}" fill="${fill}" stroke="${s}" stroke-width="1.5" stroke-linejoin="round"/>` +
+        `<path d="M${cx - w * 0.24},${cy} H${cx + w * 0.24} M${cx},${cy - h * 0.24} V${cy + h * 0.24}" stroke="${s}" stroke-width="${Math.max(2.5, Math.min(w, h) * 0.08)}" stroke-linecap="round"/>`; break;
     case 'document':
       shape = `<path d="M${x},${y} H${x + w} V${y + h - 8} Q${x + w * 0.75},${y + h - 18} ${cx},${y + h - 8} T${x},${y + h - 8} Z" fill="${fill}" stroke="${s}" stroke-width="1.5"/>`;
       label = textBlock(wrap(n.text, w - 12), cx, cy - 4); break;
@@ -775,6 +780,8 @@ function nodeSVG(n, { interactive, selected }) {
       label = textBlock(wrap(n.text, w - 12), cx, cy);
   }
   if (LABEL_BELOW.has(n.type)) label = textBlock(wrap(n.text, 130, 11), cx, y + h + 3, { size: 11, mode: 'top', color: '#3d4752' });
+  // a gateway's lines leave and enter at its corners (also the bottom one): its text sits below right, clear of them
+  if (n.type === 'parallel') label = textBlock(wrap(n.text, 90, 11), cx + 14, cy + h * 0.38, { size: 11, mode: 'top', anchor: 'start', color: '#3d4752' });
   let extra = '';
   if (interactive) {
     if (selected) extra += `<rect x="${x - 4}" y="${y - 4}" width="${w + 8}" height="${h + 8}" rx="6" fill="none" stroke="#0a5ea8" stroke-width="1.5" stroke-dasharray="4 3" pointer-events="none"/>`;
@@ -1294,6 +1301,7 @@ function editNode(n) {
   if (!n) return;
   let box = { x: n.x, y: n.y, w: n.w, h: n.h };
   if (LABEL_BELOW.has(n.type)) box = { x: n.x + n.w / 2 - 70, y: n.y + n.h + 2, w: 140, h: 44 };
+  if (n.type === 'parallel') box = { x: n.x + n.w / 2 + 10, y: n.y + n.h * 0.88, w: 110, h: 44 };
   openEditor({ ...box, value: n.text, align: n.type === 'note' ? 'left' : 'center', onCommit: v => { n.text = v; } });
 }
 function editEdge(e) {
@@ -1332,7 +1340,7 @@ const ALIGN_ICONS = (() => {
 // change the type; the size stays unless a circle or a decision is involved, the centre stays
 function setNodeType(n, type) {
   if (!TYPES[type] || n.type === type) return;
-  const c = center(n), t = TYPES[type], keepSize = !ROUND.has(n.type) && !ROUND.has(type) && type !== 'decision' && n.type !== 'decision';
+  const c = center(n), t = TYPES[type], keepSize = !ROUND.has(n.type) && !ROUND.has(type) && !GATEWAYS.has(type) && !GATEWAYS.has(n.type);
   n.type = type; if (!keepSize) { n.w = t.w; n.h = t.h; }
   n.x = c.x - n.w / 2; n.y = c.y - n.h / 2; snapNode(n);
 }
@@ -1711,16 +1719,23 @@ function autoLayout(d, hints = new Map(), { resetSides = true } = {}) {
       if (end !== undefined && n.x + n.w > end - 10) { n.w = Math.max(COL_W - 20, Math.floor((end - 10 - n.x) / GRID) * GRID); n.h = noteHeight(n); }
     }
   }
-  // 8. line routing hints: decision branches leave on different sides, loops go around
+  // 8. line routing hints: decision and parallel branches leave on different sides, loops go around
   const level = id => lane.get(id) * 100 + row.get(id);
   d.edges.forEach(e => { delete e.bend; });
   if (resetSides) d.edges.forEach(e => { e.fromSide = 'auto'; e.toSide = 'auto'; });
   const free = e => e.fromSide === 'auto' && e.toSide === 'auto';
   for (const n of nodes) {
-    if (n.type !== 'decision') continue;
+    if (!GATEWAYS.has(n.type)) continue;
     const outs = d.edges.filter(e => e.from === n.id && !back.has(e.id) && byId.has(e.to) && free(e));
     if (outs.length < 2) continue;
     for (const e of outs) { const dl = level(e.to) - level(n.id); if (dl > 0) e.fromSide = 'bottom'; else if (dl < 0) e.fromSide = 'top'; }
+  }
+  // a parallel join: branches from below come in at the bottom corner, from above at the top one
+  for (const n of nodes) {
+    if (n.type !== 'parallel') continue;
+    const ins = d.edges.filter(e => e.to === n.id && !back.has(e.id) && byId.has(e.from) && free(e));
+    if (ins.length < 2) continue;
+    for (const e of ins) { const dl = level(e.from) - level(n.id); if (dl > 0) e.toSide = 'bottom'; else if (dl < 0) e.toSide = 'top'; }
   }
   for (const e of d.edges) {
     if (!back.has(e.id) || !free(e)) continue;
@@ -1818,6 +1833,7 @@ const DRAWIO_NODE = {
   end: 'ellipse;html=1;aspect=fixed;verticalLabelPosition=bottom;verticalAlign=top;strokeWidth=4;',
   event: 'ellipse;shape=doubleEllipse;html=1;aspect=fixed;verticalLabelPosition=bottom;verticalAlign=top;',
   decision: 'rhombus;whiteSpace=wrap;html=1;',
+  parallel: 'shape=mxgraph.bpmn.gateway2;gwType=parallel;html=1;perimeter=rhombusPerimeter;outlineConnect=0;verticalLabelPosition=bottom;verticalAlign=top;',
   document: 'shape=document;whiteSpace=wrap;html=1;boundedLbl=1;size=0.25;',
   data: 'shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=8;',
   note: 'shape=partialRectangle;whiteSpace=wrap;html=1;right=0;align=left;spacingLeft=8;'
@@ -1898,6 +1914,8 @@ function htmlToText(v, html) {
 }
 function inferType(st) {
   const shape = st.shape || '';
+  if (shape.startsWith('mxgraph.bpmn.gateway') && /parallel/i.test(st.gwType || '')) return 'parallel';
+  if (shape === 'mxgraph.bpmn.shape' && (st.background === 'gateway' || /gw$/i.test(st.symbol || ''))) return /parallel/i.test(st.symbol || '') ? 'parallel' : 'decision';
   if (shape.startsWith('mxgraph.bpmn.event') || shape === 'mxgraph.bpmn.shape') return st.outline === 'end' ? 'end' : st.outline === 'standard' ? 'start' : 'event';
   if (shape.startsWith('mxgraph.bpmn.gateway') || st._rhombus || shape === 'rhombus') return 'decision';
   if (shape === 'doubleEllipse' || st._doubleEllipse) return 'event';
