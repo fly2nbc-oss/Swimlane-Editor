@@ -125,6 +125,8 @@ body.nodiagram #palette{opacity:.45;pointer-events:none}
 #canvas.linking,#canvas.linking .node{cursor:crosshair}
 #canvas.linking .port{opacity:1}
 #canvas .edgehit{cursor:pointer}
+#canvas .sublink{cursor:pointer}
+#canvas .sublink:hover{fill-opacity:.25}
 #canvas .lanesplit{cursor:ns-resize}
 #canvas .lanesplit:hover{fill:rgba(10,94,168,.25)}
 #canvas .poolw{cursor:ew-resize}
@@ -364,7 +366,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.8.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.8.1'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -873,9 +875,8 @@ function nodeSVG(n, { interactive, selected, icon, labelTop, link }) {
   if (interactive) {
     if (selected) extra += `<rect x="${x - 4}" y="${y - 4}" width="${w + 8}" height="${h + 8}" rx="6" fill="none" stroke="#0a5ea8" stroke-width="1.5" stroke-dasharray="4 3" pointer-events="none"/>`;
     for (const side of ['top', 'right', 'bottom', 'left']) { const p = sidePoint(n, side); extra += `<circle class="port" data-kind="port" data-id="${esc(n.id)}" data-side="${side}" cx="${p.x}" cy="${p.y}" r="5.5" fill="#5fa3e0" stroke="#fff" stroke-width="1.5"/>`; }
-    if (link) extra += `<g data-kind="sublink" data-id="${esc(link.id)}" style="cursor:pointer"><title>Open diagram "${esc(link.title)}"</title>` +
-      `<circle cx="${x + w - 11}" cy="${y + 11}" r="8" fill="#0a5ea8" stroke="#fff" stroke-width="1.5"/>` +
-      `<path d="M${x + w - 14},${y + 14} L${x + w - 8},${y + 8} M${x + w - 12},${y + 8} H${x + w - 8} V${y + 12}" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+    // linked: the plus box at the bottom is the link (blue frame; filled on hover)
+    if (link) extra += `<rect class="sublink" data-kind="sublink" data-id="${esc(link.id)}" x="${cx - 8}" y="${y + h - 17}" width="16" height="14" rx="2" fill="#0a5ea8" fill-opacity="0" stroke="#0a5ea8" stroke-width="1.5"><title>Open diagram "${esc(link.title)}"</title></rect>`;
     if (selected && sel.size === 1) extra += `<rect data-kind="resize" data-id="${esc(n.id)}" x="${x + w - 2}" y="${y + h - 2}" width="9" height="9" fill="#0a5ea8" stroke="#fff" style="cursor:nwse-resize"/>`;
   }
   return `<g class="node${selected ? ' sel' : ''}" data-kind="node" data-id="${esc(n.id)}">${shape}${label}${extra}</g>`;
@@ -1525,7 +1526,7 @@ function renderPanel() {
       <label class="f">Element type</label><select id="nType">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}" ${n.type === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
       <label class="f">Fill color</label>${swatchesHTML(n.color || '')}
       <label class="f">Lane</label><select id="nLane">${D.lanes.map((l, i) => `<option value="${i}" ${laneIndexAt(D, n.y + n.h / 2) === i ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
-      ${n.type !== 'subprocess' ? '' : sub ? `<label class="f">Linked diagram</label><div class="row"><button id="nSub" title="Also: the blue arrow on the element">Open &ldquo;${esc(sub.title)}&rdquo;</button></div>`
+      ${n.type !== 'subprocess' ? '' : sub ? `<label class="f">Linked diagram</label><div class="row"><button id="nSub" title="Also: click the small square at the bottom of the element">Open &ldquo;${esc(sub.title)}&rdquo;</button></div>`
         : `<p class="hint">Links to a diagram of this file when its title equals the text.</p>`}
       <div class="row" style="margin-top:12px"><button id="nDup" title="Duplicate (Ctrl+D)">Duplicate</button><button id="nDel" class="danger" title="Delete (Del)">Delete</button></div>` + help;
     $('#nText').oninput = panelInput(v => { n.text = v; });
@@ -1704,7 +1705,7 @@ const SHORTCUTS = [
     ['[Ctrl]+[S]', 'Save (.drawio)'],
     ['[Ctrl]+[Shift]+[S]', 'Save as new file'],
     ['[Ctrl]+[O]', 'Open .drawio or JSON'],
-    ['Click the blue arrow on a subprocess', 'Open the diagram of this file whose title equals its text'],
+    ['Click the small square of a subprocess', 'Open the diagram of this file whose title equals its text'],
     ['[Alt]+[←]', 'Back to the diagram the subprocess link came from'],
   ]],
   ['Editing', [

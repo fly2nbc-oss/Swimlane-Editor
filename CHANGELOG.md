@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.8.1] – 2026-11-10
+
+### Changed
+
+- **Subprocess links**: the small square at the bottom of a linked subprocess opens the diagram (framed in blue); the extra arrow in the corner is gone.
+
 ## [1.8.0] – 2026-11-10
 
 ### Added
