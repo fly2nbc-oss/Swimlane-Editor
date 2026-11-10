@@ -974,7 +974,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.8.1'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.9.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -1600,7 +1600,7 @@ function diagramMarkup(d, opts) {
 function exportSVGString(d) {
   const b = contentBounds(d), pad = 12;
   const x = b.x1 - pad, y = b.y1 - pad, w = b.x2 - b.x1 + 2 * pad, h = b.y2 - b.y1 + 2 * pad;
-  return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}">${diagramMarkup(d, { interactive: false })}</svg>`, w, h };
+  return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}">${diagramMarkup(d, { interactive: false })}</svg>`, w, h, x, y };
 }
 
 const svg = $('#canvas');
@@ -1707,11 +1707,16 @@ async function closeFile(key) {
 }
 function switchTo(id) { commitEditor(); const d = store.diagrams.find(x => x.id === id); if (!d || d === D) return; endLink();D = d; store.currentId = id; sel.clear(); selEdge = null; undoStack = []; redoStack = []; save(); renderAll(); fit(); }
 // a subprocess links to the diagram of the same file whose title equals its text (case and spaces ignored);
-// following the link remembers where it came from, Back (Alt+Left or the button in the panel) returns there
+// without an exact match a leading document number is ignored on both sides: "QM_C3.1 Create PRD" -> "Create PRD".
+// Such a number has a digit and a separator (. _ -) or is only digits; "2nd Review" keeps its first word.
+// Following the link remembers where it came from, Back (Alt+Left or the button in the panel) returns there.
 const normTitle = s => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+const stripDocNo = t => t.replace(/^(?:\S*[._-]\S*\d\S*|\S*\d\S*[._-]\S*|\d+)\s+(?=\S)/, '');
 function subTarget(d, n) {
   const t = n && n.type === 'subprocess' ? normTitle(n.text) : '';
-  return t ? groupOf(d).find(x => x !== d && normTitle(x.title) === t) || null : null;
+  if (!t) return null;
+  const others = groupOf(d).filter(x => x !== d), bare = stripDocNo(t);
+  return others.find(x => normTitle(x.title) === t) || others.find(x => stripDocNo(normTitle(x.title)) === bare) || null;
 }
 let backStack = []; // diagram ids
 function openSub(id) {
@@ -2135,7 +2140,7 @@ function renderPanel() {
       <label class="f">Fill color</label>${swatchesHTML(n.color || '')}
       <label class="f">Lane</label><select id="nLane">${D.lanes.map((l, i) => `<option value="${i}" ${laneIndexAt(D, n.y + n.h / 2) === i ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
       ${n.type !== 'subprocess' ? '' : sub ? `<label class="f">Linked diagram</label><div class="row"><button id="nSub" title="Also: click the small square at the bottom of the element">Open &ldquo;${esc(sub.title)}&rdquo;</button></div>`
-        : `<p class="hint">Links to a diagram of this file when its title equals the text.</p>`}
+        : `<p class="hint">Links to a diagram of this file when its title equals the text; a leading number such as 3.1 does not count.</p>`}
       <div class="row" style="margin-top:12px"><button id="nDup" title="Duplicate (Ctrl+D)">Duplicate</button><button id="nDel" class="danger" title="Delete (Del)">Delete</button></div>` + help;
     $('#nText').oninput = panelInput(v => { n.text = v; });
     $('#nType').onchange = ev => mutate(() => setNodeType(n, ev.target.value));
@@ -2965,14 +2970,23 @@ async function exportPDF(list, multi, fname) {
   const name = fname || (list.length > 1 ? (first.fileName || first.fileSource || first.title).replace(/\.drawio$/i, '') : first.title);
   doc.setProperties({ title: name, subject: list.length > 1 ? 'Process diagrams' : 'Process diagram', author: first.owner || store.settings.company || '', creator: `Swimlane Editor ${APP_VERSION}` });
   const plans = list.map(d => pdfLayout(d, multi)), total = plans.reduce((s, p) => s + p.pages, 0);
+  // a linked subprocess becomes a link to the first page of its diagram (when that diagram is in this PDF)
+  const firstPage = new Map(); plans.reduce((p, L) => { firstPage.set(L.d, p); return p + L.pages; }, 1);
+  const subLinks = (d, toPage) => {
+    for (const n of d.nodes) {
+      const t = subTarget(d, n), pg = t && firstPage.get(t); if (!pg) continue;
+      const r = toPage(n); if (r && r.w > 0.5 && r.h > 0.5) doc.link(r.x, r.y, r.w, r.h, { pageNumber: pg });
+    }
+  };
   let page = 0, small = false;
   for (const L of plans) {
     const d = L.d, h = L.h, base = page;
     if (L.one) {
       if (page++) doc.addPage('a4', 'landscape');
-      const ar = pdfFrame(doc, d, page, total), { svg: str, w } = exportSVGString(d);
-      const scale = Math.min(ar.w / w, ar.h / h, 0.36), dw = w * scale, dh = h * scale;
-      await svgToPdf(doc, str, ar.x + (ar.w - dw) / 2, ar.y, dw, dh);
+      const ar = pdfFrame(doc, d, page, total), { svg: str, w, x: vx, y: vy } = exportSVGString(d);
+      const scale = Math.min(ar.w / w, ar.h / h, 0.36), dw = w * scale, dh = h * scale, ox = ar.x + (ar.w - dw) / 2;
+      await svgToPdf(doc, str, ox, ar.y, dw, dh);
+      subLinks(d, n => ({ x: ox + (n.x - vx) * scale, y: ar.y + (n.y - vy) * scale, w: n.w * scale, h: n.h * scale }));
       if (scale < 0.2) small = true;
       continue;
     }
@@ -2988,6 +3002,12 @@ async function exportPDF(list, multi, fname) {
         part('cl', left, 0, headW, bh + 4, 0, -ya) +                               // lane headers
         part('ck', left, y1, headW, topH, 0, 0) + '</svg>';                        // corner
       await svgToPdf(doc, str, ar.x, ar.y, W * scale, H * scale);
+      subLinks(d, n => { // the part of the element inside this tile's content area
+        const x0 = Math.max(n.x, a), x1 = Math.min(n.x + n.w, bb + 4), y0 = Math.max(n.y, ya), y1n = Math.min(n.y + n.h, yb + 4);
+        if (x1 <= x0 || y1n <= y0) return null;
+        const px = m => ar.x + (m - a + CX - left) * scale, py = m => ar.y + (m - ya - y1) * scale;
+        return { x: px(x0), y: py(y0), w: (x1 - x0) * scale, h: (y1n - y0) * scale };
+      });
       doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(120, 128, 138);
       const ty = ar.y + H * scale + 4, here = base + bi * nx + xi + 1;
       if (xi > 0) doc.text('<- continued from page ' + (here - 1), ar.x + headW * scale, ty);

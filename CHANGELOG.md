@@ -7,6 +7,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.9.0] – 2026-11-10
+
+### Added
+
+- **Subprocess links in the PDF**: a linked subprocess is a link to the first page of its diagram when that diagram is in the same PDF.
+
+### Changed
+
+- **Subprocess links with document numbers**: a leading number such as `QM_C3.1` or `3.6.1` is ignored when the text is compared with the diagram titles, so "QM_C3.1 Create PRD" links to the diagram "Create PRD". An exact match still comes first.
+
 ## [1.8.1] – 2026-11-10
 
 ### Changed
