@@ -364,7 +364,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.7.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.8.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -815,7 +815,7 @@ function labelPos(d, e, pts) {
 
 /* ================= rendering ================= */
 // icon: document or system/data drawn as a symbol with the text below (see artifactStyle)
-function nodeSVG(n, { interactive, selected, icon, labelTop }) {
+function nodeSVG(n, { interactive, selected, icon, labelTop, link }) {
   const st = STYLE[n.type] || STYLE.task, fill = n.color || st.fill, s = st.stroke;
   const { x, y, w, h } = n, cx = x + w / 2, cy = y + h / 2;
   let shape = '', label = '';
@@ -873,6 +873,9 @@ function nodeSVG(n, { interactive, selected, icon, labelTop }) {
   if (interactive) {
     if (selected) extra += `<rect x="${x - 4}" y="${y - 4}" width="${w + 8}" height="${h + 8}" rx="6" fill="none" stroke="#0a5ea8" stroke-width="1.5" stroke-dasharray="4 3" pointer-events="none"/>`;
     for (const side of ['top', 'right', 'bottom', 'left']) { const p = sidePoint(n, side); extra += `<circle class="port" data-kind="port" data-id="${esc(n.id)}" data-side="${side}" cx="${p.x}" cy="${p.y}" r="5.5" fill="#5fa3e0" stroke="#fff" stroke-width="1.5"/>`; }
+    if (link) extra += `<g data-kind="sublink" data-id="${esc(link.id)}" style="cursor:pointer"><title>Open diagram "${esc(link.title)}"</title>` +
+      `<circle cx="${x + w - 11}" cy="${y + 11}" r="8" fill="#0a5ea8" stroke="#fff" stroke-width="1.5"/>` +
+      `<path d="M${x + w - 14},${y + 14} L${x + w - 8},${y + 8} M${x + w - 12},${y + 8} H${x + w - 8} V${y + 12}" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></g>`;
     if (selected && sel.size === 1) extra += `<rect data-kind="resize" data-id="${esc(n.id)}" x="${x + w - 2}" y="${y + h - 2}" width="9" height="9" fill="#0a5ea8" stroke="#fff" style="cursor:nwse-resize"/>`;
   }
   return `<g class="node${selected ? ' sel' : ''}" data-kind="node" data-id="${esc(n.id)}">${shape}${label}${extra}</g>`;
@@ -982,7 +985,7 @@ function diagramMarkup(d, opts) {
   const valid = new Set(d.nodes.map(n => n.id));
   let s = lanesSVG(d, opts.interactive) + phasesSVG(d, opts.interactive);
   for (const e of d.edges) if (valid.has(e.from) && valid.has(e.to)) s += edgeSVG(d, e, { interactive: opts.interactive, selected: opts.interactive && selEdge === e.id });
-  for (const n of d.nodes) s += nodeSVG(n, { interactive: opts.interactive, selected: opts.interactive && sel.has(n.id), icon: iconArt(d, n), labelTop: iconLabelTop(d, n) });
+  for (const n of d.nodes) s += nodeSVG(n, { interactive: opts.interactive, selected: opts.interactive && sel.has(n.id), icon: iconArt(d, n), labelTop: iconLabelTop(d, n), link: opts.interactive && subTarget(d, n) });
   return s;
 }
 function exportSVGString(d) {
@@ -1094,6 +1097,24 @@ async function closeFile(key) {
   toast(`${name} closed`);
 }
 function switchTo(id) { commitEditor(); const d = store.diagrams.find(x => x.id === id); if (!d || d === D) return; endLink();D = d; store.currentId = id; sel.clear(); selEdge = null; undoStack = []; redoStack = []; save(); renderAll(); fit(); }
+// a subprocess links to the diagram of the same file whose title equals its text (case and spaces ignored);
+// following the link remembers where it came from, Back (Alt+Left or the button in the panel) returns there
+const normTitle = s => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+function subTarget(d, n) {
+  const t = n && n.type === 'subprocess' ? normTitle(n.text) : '';
+  return t ? groupOf(d).find(x => x !== d && normTitle(x.title) === t) || null : null;
+}
+let backStack = []; // diagram ids
+function openSub(id) {
+  const from = D; switchTo(id);
+  if (!from || D === from) return;
+  backStack.push(from.id); renderPanel();
+  toast(`Opened "${D.title}". Alt+Left goes back.`);
+}
+function goBack() {
+  while (backStack.length) { const id = backStack.pop(); if (store.diagrams.some(x => x.id === id)) { switchTo(id); return; } }
+}
+function backTarget() { for (let i = backStack.length - 1; i >= 0; i--) { const d = store.diagrams.find(x => x.id === backStack[i]); if (d) return d; } return null; }
 $('#bNew').onclick = () => { const d = newDiagram(); store.diagrams.push(d); switchTo(d.id); toast('New diagram created'); };
 // a new diagram in the current file: it joins the group (a single diagram becomes a group with key = its id, so its file handle stays)
 $('#bNewPage').onclick = () => {
@@ -1226,6 +1247,7 @@ svg.addEventListener('pointerdown', ev => {
   if (document.activeElement && document.activeElement !== document.body && !document.activeElement.classList.contains('inlineEdit')) document.activeElement.blur();
   const t = ev.target.closest('[data-kind]'), kind = t ? t.dataset.kind : 'bg', p = toModel(ev);
   if (linkFrom) { ev.preventDefault(); lastDown = { t: 0, x: 0, y: 0 }; finishLink(t, kind); return; }
+  if (kind === 'sublink') { ev.preventDefault(); lastDown = { t: 0, x: 0, y: 0 }; openSub(t.dataset.id); return; }
   // own double-click detection (the SVG is re-rendered between clicks, so native dblclick is unreliable)
   const now = Date.now(), isDouble = now - lastDown.t < 450 && Math.hypot(ev.clientX - lastDown.x, ev.clientY - lastDown.y) < 6;
   lastDown = isDouble ? { t: 0, x: 0, y: 0 } : { t: now, x: ev.clientX, y: ev.clientY };
@@ -1497,17 +1519,20 @@ function renderPanel() {
     return;
   }
   if (sel.size === 1) {
-    const n = nodeById(D, [...sel][0]);
+    const n = nodeById(D, [...sel][0]), sub = subTarget(D, n);
     panel.innerHTML = `<h3>${esc(TYPES[n.type].label)}</h3>
       <label class="f">Text</label><textarea id="nText">${esc(n.text)}</textarea>
       <label class="f">Element type</label><select id="nType">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}" ${n.type === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
       <label class="f">Fill color</label>${swatchesHTML(n.color || '')}
       <label class="f">Lane</label><select id="nLane">${D.lanes.map((l, i) => `<option value="${i}" ${laneIndexAt(D, n.y + n.h / 2) === i ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
+      ${n.type !== 'subprocess' ? '' : sub ? `<label class="f">Linked diagram</label><div class="row"><button id="nSub" title="Also: the blue arrow on the element">Open &ldquo;${esc(sub.title)}&rdquo;</button></div>`
+        : `<p class="hint">Links to a diagram of this file when its title equals the text.</p>`}
       <div class="row" style="margin-top:12px"><button id="nDup" title="Duplicate (Ctrl+D)">Duplicate</button><button id="nDel" class="danger" title="Delete (Del)">Delete</button></div>` + help;
     $('#nText').oninput = panelInput(v => { n.text = v; });
     $('#nType').onchange = ev => mutate(() => setNodeType(n, ev.target.value));
     panel.querySelectorAll('.sw').forEach(b => b.onclick = () => mutate(() => { if (b.dataset.c) n.color = b.dataset.c; else delete n.color; }));
     $('#nLane').onchange = ev => mutate(() => { const i = +ev.target.value, tops = laneTops(D); n.y = tops[i] + D.lanes[i].height / 2 - n.h / 2; snapNode(n); clampNode(D, n); });
+    if (sub) $('#nSub').onclick = () => openSub(sub.id);
     $('#nDup').onclick = duplicate;
     $('#nDel').onclick = deleteSelection;
     return;
@@ -1552,7 +1577,8 @@ function renderPanel() {
     $('#mDup').onclick = duplicate; $('#mDel').onclick = deleteSelection;
     return;
   }
-  panel.innerHTML = `<h3>Diagram</h3>
+  const back = backTarget();
+  panel.innerHTML = (back ? `<div class="row"><button id="pBack" title="Alt+Left">&larr; Back to &ldquo;${esc(back.title)}&rdquo;</button></div>` : '') + `<h3>Diagram</h3>
     <label class="f">Title</label><input type="text" id="pTitle" value="${esc(D.title)}">
     <label class="f">Owner</label><input type="text" id="pOwner" value="${esc(D.owner)}" placeholder="Responsible person or team">
     <div class="row"><div style="flex:1"><label class="f">Version</label><input type="text" id="pVersion" value="${esc(D.version)}"></div>
@@ -1572,6 +1598,7 @@ function renderPanel() {
       <div class="lane-row ms-row"><input type="text" data-mi="${i}" value="${esc(p.milestone || '')}" placeholder="Milestone (optional)" title="Shown as a tag at the top right of the phase"></div>`).join('')}</div>
     <button id="addPhase">+ Add phase</button>
     <p class="hint">Drag the bottom border of a lane to change its height, the right edge of a phase header to change its width, and the right border of the pool to change the pool width. Double-click a header to rename it.</p>` + help;
+  if (back) $('#pBack').onclick = goBack;
   $('#pTitle').oninput = panelInput(v => { D.title = v; });
   $('#pOwner').oninput = panelInput(v => { D.owner = v; });
   $('#pVersion').oninput = panelInput(v => { D.version = v; });
@@ -1677,6 +1704,8 @@ const SHORTCUTS = [
     ['[Ctrl]+[S]', 'Save (.drawio)'],
     ['[Ctrl]+[Shift]+[S]', 'Save as new file'],
     ['[Ctrl]+[O]', 'Open .drawio or JSON'],
+    ['Click the blue arrow on a subprocess', 'Open the diagram of this file whose title equals its text'],
+    ['[Alt]+[←]', 'Back to the diagram the subprocess link came from'],
   ]],
   ['Editing', [
     ['Double-click', 'Edit text, or new task on an empty spot'],
@@ -1735,6 +1764,7 @@ document.addEventListener('keydown', ev => {
   else if (!ev.altKey && (ev.key === '+' || ev.key === '=' || ev.code === 'NumpadAdd')) { ev.preventDefault(); setZoom(zoom * 1.2); }
   else if (!ev.altKey && (ev.key === '-' || ev.code === 'NumpadSubtract')) { ev.preventDefault(); setZoom(zoom / 1.2); }
   else if (mod) return;
+  else if (ev.altKey && !ev.shiftKey && ev.key === 'ArrowLeft') { ev.preventDefault(); goBack(); }
   else if (ev.key === 'F10') { ev.preventDefault(); toggleSidebar('left'); }
   else if (ev.key === 'F1' || ev.key === '?' || letter === 'H') { ev.preventDefault(); openHelp(); }
   else if (letter === 'T') { ev.preventDefault(); toggleToolbar(); }

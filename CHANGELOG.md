@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.8.0] – 2026-11-10
+
+### Added
+
+- **Subprocess links**: a subprocess links to the diagram of the same file whose title equals its text (case and spaces ignored). A blue arrow on the element and a button in the details panel open that diagram; Alt+Left or "Back" in the panel returns.
+
 ## [1.7.0] – 2026-11-09
 
 ### Added
