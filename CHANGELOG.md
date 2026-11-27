@@ -7,6 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ## [Unreleased]
 
+## [1.9.1] – 2026-11-27
+
+### Fixed
+
+- **Recent files that did not react**: in some browser windows (seen in an Edge app window) the browser never answers a request on a stored file access. A click on a recent file or on its × then did nothing, and Save to the known file could wait for ever. The editor now waits only a moment: a recent file opens the file dialog instead, Save asks for the file name, and × always removes the entry. The list of recent files is kept apart from the file accesses; the existing list is taken over.
+
 ## [1.9.0] – 2026-11-10
 
 ### Added

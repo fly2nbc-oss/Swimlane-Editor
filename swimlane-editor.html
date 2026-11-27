@@ -974,7 +974,7 @@ const DIR = { right:[1,0], left:[-1,0], top:[0,-1], bottom:[0,1] };
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
-const APP_VERSION = '1.9.0'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
+const APP_VERSION = '1.9.1'; // a release tag vX.Y.Z must match (CI checks it), see CHANGELOG.md
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,64}$/, SAFE_COLOR = /^#(?:[0-9A-Fa-f]{3}){1,2}$/; // see harden()
@@ -3054,10 +3054,16 @@ const handles = new Map();
 const idb = (() => {
   let dbp;
   const open = () => dbp || (dbp = new Promise((res, rej) => { const r = indexedDB.open('swimlane-editor', 1); r.onupgradeneeded = () => r.result.createObjectStore('handles'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
-  const run = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction('handles', mode), r = fn(t.objectStore('handles')); t.oncomplete = () => res(r.result); t.onerror = () => rej(t.error); }); };
+  const run = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction('handles', mode), r = fn(t.objectStore('handles')); t.oncomplete = () => res(r.result); t.onerror = t.onabort = () => rej(t.error || new Error('Transaction aborted')); }); };
   return { get: k => run('readonly', st => st.get(k)), set: (k, v) => run('readwrite', st => st.put(v, k)), del: k => run('readwrite', st => st.delete(k)) };
 })();
-async function getHandle(id) { if (handles.has(id)) return handles.get(id); try { const h = await idb.get(id); if (h) handles.set(id, h); return h || null; } catch (e) { return null; } }
+// A browser may never answer a call on a stored file handle (seen in an Edge app window: queryPermission and
+// even storing the handle again stay pending). So nothing waits for such a call without a limit: soon() gives
+// HUNG after `ms`, and the caller goes on without the handle (file dialog instead). The limits are short, so
+// the click or key press still counts as a user action when the dialog opens.
+const HUNG = Symbol('hung');
+const soon = (p, ms = 1200) => Promise.race([p, new Promise(res => setTimeout(() => res(HUNG), ms))]);
+async function getHandle(id) { if (handles.has(id)) return handles.get(id); try { const h = await soon(idb.get(id)); if (h === HUNG) return null; if (h) handles.set(id, h); return h || null; } catch (e) { return null; } }
 function rememberHandle(id, h) { if (!h) return; handles.set(id, h); idb.set(id, h).catch(() => {}); }
 const FS_API = typeof window.showSaveFilePicker === 'function';
 const DRAWIO_PICK = [{ description: 'draw.io diagram', accept: { 'application/vnd.jgraph.mxfile': ['.drawio'] } }];
@@ -3081,44 +3087,117 @@ async function saveFile(asNew) {
   try {
     let h = asNew ? null : await getHandle(key);
     if (h && ds.some(x => x.foreign) && !await ask('Overwrite file?', `${d.fileName} was not created with this editor. If you overwrite it, shapes and styles the editor does not know will be lost.`, { ok: 'Overwrite', cancel: 'Save as new file', danger: true })) h = null;
-    if (h && (await h.queryPermission({ mode: 'readwrite' })) !== 'granted' && (await h.requestPermission({ mode: 'readwrite' })) !== 'granted') h = null;
+    if (h) {
+      // no answer from the browser: save with the dialog instead of waiting for ever
+      const perm = await soon(h.queryPermission({ mode: 'readwrite' }));
+      if (perm === HUNG || (perm !== 'granted' && (await h.requestPermission({ mode: 'readwrite' })) !== 'granted')) h = null;
+    }
     if (!h) h = await window.showSaveFilePicker({ suggestedName: suggested, types: DRAWIO_PICK });
     const w = await h.createWritable(); await w.write(xml); await w.close();
     rememberHandle(key, h); done(h.name); addRecent(h.name, h);
     toast('Saved to ' + h.name + pages);
   } catch (e) { if (e.name !== 'AbortError') toast('Save failed: ' + e.message); }
 }
-// Recent files: the last RECENT_MAX files opened or saved, shown on the empty page. The browser keeps the file
-// handles (IndexedDB), so a click opens the file again after asking for permission. A file that came without a
-// handle (file input, some drops) is listed but cannot be opened from the list.
-const RECENT_KEY = '\u0000recent', RECENT_MAX = 10;
-async function recentList() { try { const r = await idb.get(RECENT_KEY); return Array.isArray(r) ? r.filter(x => x && typeof x.name === 'string') : []; } catch (e) { return []; } }
-async function addRecent(name, handle) {
-  try {
-    const keep = [];
-    for (const r of await recentList()) {
-      const same = handle && r.handle ? await r.handle.isSameEntry(handle).catch(() => false) : r.name === name;
-      if (!same) keep.push(r);
-    }
-    await idb.set(RECENT_KEY, [{ name, handle: handle || null, at: Date.now() }, ...keep].slice(0, RECENT_MAX));
-  } catch (e) { /* no IndexedDB: no list */ }
-  if (!D) renderRecent();
+// Recent files: the last RECENT_MAX files opened or saved, shown on the empty page. The list itself (names and
+// dates) is in localStorage, so showing it and removing an entry never touch a file handle. The handles are in
+// IndexedDB, one key each (`hk`); a click fetches the handle and opens the file after asking for permission.
+// When the browser does not answer for a handle (see soon()), the file dialog opens instead. A file that came
+// without a handle (file input, some drops) is listed but cannot be opened from the list.
+// Up to 1.9.0 the list was one IndexedDB value with the handles inside (RECENT_KEY): its entries are taken over
+// once (`old`), their handles are read from that value and it is deleted when no entry needs it any more.
+const RECENT_KEY = '\u0000recent', RECENT_LS = 'swimlane-editor.recent.v1', RECENT_MAX = 10;
+const OPEN_PICK = [{ description: 'Diagrams', accept: { 'application/vnd.jgraph.mxfile': ['.drawio'], 'application/xml': ['.xml'], 'application/json': ['.json'] } }];
+const recentStored = () => { try { const r = JSON.parse(localStorage.getItem(RECENT_LS)); return Array.isArray(r) ? r.filter(x => x && typeof x.name === 'string') : null; } catch (e) { return null; } };
+const storeRecent = list => { try { localStorage.setItem(RECENT_LS, JSON.stringify(list)); } catch (e) { /* no storage: no list */ } };
+// The list of 1.9.0 is taken over once: its entries are added behind the ones stored since. When the browser
+// does not answer, the list goes on without them and the next start tries again (RECENT_LS + '.old' = done).
+let recentTakeover = null; // one attempt per start; every reader of the list waits for it (2 s at most)
+async function takeOverRecent() {
+  let old;
+  try { old = await soon(idb.get(RECENT_KEY), 2000); } catch (e) { old = undefined; /* no IndexedDB: nothing to take over */ }
+  if (old === HUNG) return;
+  const list = recentStored() || [];
+  for (const x of Array.isArray(old) ? old : []) {
+    if (x && typeof x.name === 'string' && !list.some(r => r.name === x.name)) list.push({ name: x.name, at: +x.at || 0, ...(x.handle ? { old: true } : {}) });
+  }
+  storeRecent(list.slice(0, RECENT_MAX));
+  try { localStorage.setItem(RECENT_LS + '.old', '1'); } catch (e) { /* no storage */ }
 }
-async function removeRecent(r) {
-  try { await idb.set(RECENT_KEY, (await recentList()).filter(x => !(x.at === r.at && x.name === r.name))); } catch (e) {}
-  renderRecent();
+async function recentList() {
+  let done = true;
+  try { done = !!localStorage.getItem(RECENT_LS + '.old'); } catch (e) { /* no storage */ }
+  if (!done) await (recentTakeover = recentTakeover || takeOverRecent());
+  return recentStored() || [];
+}
+// the file handle of an entry: a handle, null (none) or HUNG (the browser does not answer)
+async function recentHandle(r) {
+  try {
+    if (r.hk) return (await soon(idb.get(r.hk))) || null;
+    if (r.old) {
+      const old = await soon(idb.get(RECENT_KEY));
+      if (old === HUNG) return HUNG;
+      const x = (Array.isArray(old) ? old : []).find(x => x && x.at === r.at && x.name === r.name);
+      return (x && x.handle) || null;
+    }
+  } catch (e) { /* no IndexedDB */ }
+  return null;
+}
+// handles of entries that left the list are deleted; nothing waits for that
+function forgetRecent(gone, list) {
+  for (const r of gone) if (r.hk) idb.del(r.hk).catch(() => {});
+  if (gone.some(r => r.old) && !list.some(r => r.old)) idb.del(RECENT_KEY).catch(() => {});
+}
+let recentQueue = Promise.resolve(); // one change of the list after the other (several files opened at once)
+function addRecent(name, handle) {
+  return recentQueue = recentQueue.then(async () => {
+    const keep = [], drop = [];
+    for (const r of await recentList()) {
+      let same = r.name === name;
+      // the same name in another folder is another file, when the browser can tell
+      if (same && handle && (r.hk || r.old)) {
+        const h = await recentHandle(r);
+        if (h && h !== HUNG && (await soon(h.isSameEntry(handle).catch(() => true))) === false) same = false;
+      }
+      (same ? drop : keep).push(r);
+    }
+    const entry = { name, at: Date.now() };
+    if (handle) { entry.hk = RECENT_KEY + ':' + entry.at + ':' + uid(); idb.set(entry.hk, handle).catch(() => {}); }
+    const list = [entry, ...keep], cut = list.splice(RECENT_MAX);
+    storeRecent(list); forgetRecent([...drop, ...cut], list);
+    if (!D) renderRecent();
+  }).catch(() => {});
+}
+function removeRecent(r) {
+  return recentQueue = recentQueue.then(async () => {
+    const list = (await recentList()).filter(x => !(x.at === r.at && x.name === r.name));
+    storeRecent(list); forgetRecent([r], list);
+    renderRecent();
+  }).catch(() => {});
 }
 async function openRecent(r) {
+  // without an answer from the browser: let the user choose the file again
+  const pick = async () => {
+    toast('The browser does not answer for ' + r.name + '. Please choose the file.');
+    try { const [h] = await window.showOpenFilePicker({ types: OPEN_PICK }); await openFile(await h.getFile(), h); }
+    catch (e) { if (e.name !== 'AbortError') toast('Could not open ' + r.name + '. Open it with Open\u2026'); }
+  };
   try {
-    let perm = await r.handle.queryPermission({ mode: 'read' });
-    if (perm !== 'granted') perm = await r.handle.requestPermission({ mode: 'read' });
+    const h = await recentHandle(r);
+    if (h === HUNG) return pick();
+    if (!h) { toast('The browser has no access to ' + r.name + ' any more. Open it with Open\u2026'); return; }
+    let perm = await soon(h.queryPermission({ mode: 'read' }));
+    if (perm === HUNG) return pick();
+    if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
     if (perm !== 'granted') { toast('No permission to read ' + r.name); return; }
-    await openFile(await r.handle.getFile(), r.handle);
+    const file = await soon(h.getFile(), 1500);
+    if (file === HUNG) return pick();
+    await openFile(file, h);
   } catch (e) {
     if (e.name === 'NotFoundError') { toast(r.name + ' was moved or deleted. It is removed from the list.'); removeRecent(r); }
     else toast('Could not open ' + r.name + ': ' + e.message);
   }
 }
+recentList();
 let recentSeq = 0;
 async function renderRecent() {
   const seq = ++recentSeq, list = await recentList(), box = $('#recentFiles');
@@ -3131,7 +3210,7 @@ async function renderRecent() {
   for (const r of list) {
     const li = el('li'), b = el('button', 'recent-open'), x = el('button', 'recent-del', '\u00d7');
     b.append(el('span', 'recent-name', r.name), el('span', 'recent-date', when(r.at)));
-    if (r.handle) { b.title = 'Open ' + r.name; b.onclick = () => openRecent(r); }
+    if (r.hk || r.old) { b.title = 'Open ' + r.name; b.onclick = () => openRecent(r); }
     else { b.disabled = true; b.title = r.name + ': the browser gave no access to this file. Open it with Open\u2026'; }
     x.title = 'Remove ' + r.name + ' from the list'; x.setAttribute('aria-label', x.title); x.onclick = () => removeRecent(r);
     li.append(b, x); ul.append(li);
@@ -3141,7 +3220,7 @@ async function renderRecent() {
 async function openFiles() {
   if (typeof window.showOpenFilePicker !== 'function') { $('#fileInput').click(); return; }
   try {
-    const hs = await window.showOpenFilePicker({ multiple: true, types: [{ description: 'Diagrams', accept: { 'application/vnd.jgraph.mxfile': ['.drawio'], 'application/xml': ['.xml'], 'application/json': ['.json'] } }] });
+    const hs = await window.showOpenFilePicker({ multiple: true, types: OPEN_PICK });
     for (const h of hs) await openFile(await h.getFile(), h);
   } catch (e) { if (e.name !== 'AbortError') toast('Open failed: ' + e.message); }
 }
@@ -3168,7 +3247,7 @@ async function openFile(file, handle, recentHandle = null) {
     const sameFile = x => linked ? x.fileName === fname : !x.fileName && x.fileSource === source;
     const openKeys = new Set(store.diagrams.filter(sameFile).map(groupKey));
     // same name in another folder is another file (when both handles are known)
-    if (handle) for (const k of [...openKeys]) { const h = await getHandle(k); if (h && !await h.isSameEntry(handle).catch(() => true)) openKeys.delete(k); }
+    if (handle) for (const k of [...openKeys]) { const h = await getHandle(k); if (h && (await soon(h.isSameEntry(handle).catch(() => true))) === false) openKeys.delete(k); }
     let reload = false, at = store.diagrams.length;
     if (openKeys.size) {
       const old = store.diagrams.filter(x => openKeys.has(groupKey(x)));
